@@ -29,25 +29,25 @@ class TestPositionInit(unittest.TestCase):
     def test_position_init_input_row_1point1(self):
         try:
             Position(1.1, 0)
-        except ValueError as error:
+        except TypeError as error:
             self.assertEqual(str(error), '__init__() invalid arguments')
 
     def test_position_init_input_col_1point1(self):
         try:
             Position(0, 1.1)
-        except ValueError as error:
+        except TypeError as error:
             self.assertEqual(str(error), '__init__() invalid arguments')
 
     def test_position_init_input_row_1point1_col_1point1(self):
         try:
             Position(1.1, 1.1)
-        except ValueError as error:
+        except TypeError as error:
             self.assertEqual(str(error), '__init__() invalid arguments')
 
     def test_position_init_input_row_tuple_col_tuple(self):
         try:
             Position((), ())
-        except ValueError as error:
+        except TypeError as error:
             self.assertEqual(str(error), '__init__() invalid arguments')
 
     def test_position_init_input_three_items(self):
@@ -96,7 +96,7 @@ class TestPositionGet(unittest.TestCase):
         p = Position(1, 1)
         try:
             p.__getitem__(2)
-        except ValueError as error:
+        except IndexError as error:
             self.assertEqual(str(error), '__getitem__() invalid arguments')
 
 
