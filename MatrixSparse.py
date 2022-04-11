@@ -32,6 +32,7 @@ class MatrixSparse(Matrix):
         raise NotImplementedError
 
     def sparsity(self) -> float:
+        # TODO: implement this method
         pass
 
     @staticmethod
