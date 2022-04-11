@@ -1,2 +1,3 @@
-# dIoTspmatrix_55091_
- 
+# Sparse Matrix Python Library
+
+Used in DTSD class
