@@ -3,11 +3,8 @@ from MatrixSparse import *
 from Position import *
 from typing import Union
 
-matrix = dict[Position, float]
-
-
 class MatrixSparseDOK(MatrixSparse):
-    _items = matrix
+    _items = dict[Position, float]
 
     def __init__(self, zero: float = 0.0):
         # TODO: implement this method
