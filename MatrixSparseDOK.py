@@ -56,8 +56,19 @@ class MatrixSparseDOK(MatrixSparse):
         pass
 
     def dim(self) -> tuple[Position, ...]:
-        # TODO: implement this method
-        pass
+        """Compute the dimensions of the matrix
+
+        Returns:
+            tuple[Position, ...]: The dimensions of the matrix as a tuple of Position objects
+        """
+        if len(self) == 0:
+            return tuple()
+        positions = list(self)
+        min_row = min(p[0] for p in positions)
+        min_col = min(p[1] for p in positions)
+        max_row = max(p[0] for p in positions)
+        max_col = max(p[1] for p in positions)
+        return ((min_row, min_col),(max_row,max_col))
 
     def row(self, row: int) -> Matrix:
         # TODO: implement this method
