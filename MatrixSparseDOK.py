@@ -4,11 +4,10 @@ from Position import *
 from typing import Union
 
 class MatrixSparseDOK(MatrixSparse):
-    _items = dict[Position, float]
 
     def __init__(self, zero: float = 0.0):
-        # TODO: implement this method
-        pass
+        self._zero = zero
+        self._items = dict()
 
     def __copy__(self):
         # TODO: implement this method
