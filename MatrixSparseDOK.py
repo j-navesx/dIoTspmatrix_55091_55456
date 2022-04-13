@@ -3,6 +3,7 @@ from MatrixSparse import *
 from Position import *
 from typing import Union
 
+
 class MatrixSparseDOK(MatrixSparse):
     _items = dict[Position, float]
 
