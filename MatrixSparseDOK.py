@@ -3,27 +3,32 @@ from MatrixSparse import *
 from Position import *
 from typing import Union
 
+
+
 class MatrixSparseDOK(MatrixSparse):
 
     def __init__(self, zero: float = 0.0):
+        if not isinstance(zero, (float,int)):
+            raise TypeError("__init__: invalid arguments")
         self._zero = zero
         self._items = dict()
-
+    
     def __copy__(self):
-        # TODO: implement this method
-        pass
+        copy = MatrixSparseDOK(self.zero)
+        copy._items = self._items
+        return copy
 
     def __eq__(self, other: MatrixSparseDOK):
-        # TODO: implement this method
-        pass
+        if not isinstance(other, MatrixSparseDOK):
+            raise TypeError("__eq__: invalid arguments")
+        return self == other
 
     def __iter__(self):
-        # TODO: implement this method
-        pass
+        self.iterator = iter(self._items)
+        return self.iterator
 
     def __next__(self):
-        # TODO: implement this method
-        pass
+        return self.iterator.next()
 
     def __getitem__(self, pos: Union[Position, position]) -> float:
         # TODO: implement this method
@@ -91,3 +96,4 @@ class MatrixSparseDOK(MatrixSparse):
     def decompress(compressed_vector: compressed) -> MatrixSparse:
         # TODO: implement this method
         pass
+
