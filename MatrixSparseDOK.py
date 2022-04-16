@@ -46,9 +46,11 @@ class MatrixSparseDOK(MatrixSparse):
         return len(self._items)
 
     def _add_number(self, other: Union[int, float]) -> Matrix:
-        # TODO: implement this method
-        pass
-
+        if not isinstance(other, (int, float)):
+            raise TypeError("_add_number: invalid arguments")
+        for key,item in self._items.items():
+            self._items.update({key: item+other})
+            
     def _add_matrix(self, other: MatrixSparse) -> MatrixSparse:
         # TODO: implement this method
         pass
