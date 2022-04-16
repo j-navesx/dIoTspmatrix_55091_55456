@@ -32,12 +32,15 @@ class MatrixSparseDOK(MatrixSparse):
     def __getitem__(self, pos: Union[Position, position]) -> float:
         if not isinstance(pos, Position):
             raise TypeError("__getitem__: invalid arguments")
-        else:
-            return self._items.get(pos, self._zero)
+        return self._items.get(pos, self._zero)
 
     def __setitem__(self, pos: Union[Position, position], val: Union[int, float]):
-        # TODO: implement this method
-        pass
+        if not (isinstance(pos, Position) and isinstance(val, (int, float))):
+            raise TypeError("__setitem__: invalid arguments")
+        if(val == self._zero and self._items.get(pos) != None):
+            self._items.pop(pos)
+        if(val != self.zero):
+            self._items.update({pos: val})
 
     def __len__(self) -> int:
         # TODO: implement this method
