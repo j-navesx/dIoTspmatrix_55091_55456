@@ -85,8 +85,57 @@ class MatrixSparseDOK(MatrixSparse):
         pass
 
     def diagonal(self) -> Matrix:
-        # TODO: implement this method
-        pass
+        if not (self.square()):
+            raise ValueError('spmatrix_diagonal: matrix not square')
+        
+        matrix = MatrixSparseDOK(self._zero)
+    
+        min_row, min_col = self.min_row_col()
+        max_row, max_col = self.max_row_col()
+        y = min_row
+        for x in range(min_col,max_col+1):
+            if(self._items.get((y,x)) != None):
+                matrix.__setitem__(Position(y,x),self._items.get((y,x)))
+            if(y < max_row):
+                y += 1
+        return matrix
+
+    def max_row_col(self) -> tuple:
+        first_iteration = True
+        for key in self._items.keys():
+            if(first_iteration):
+                line = key[0]
+                col = key[1]
+                first_iteration = False
+            if(key[0] > line):
+                line = key[0]
+            if(key[1] > col):
+                col = key[1]
+        return (line,col)
+
+    def min_row_col(self) -> tuple:
+        first_iteration = True
+        for key in self._items.keys():
+            if(first_iteration):
+                line = key[0]
+                col = key[1]
+                first_iteration = False
+            if(key[0] < line):
+                line = key[0]
+            if(key[1] < col):
+                col = key[1]
+        return (line,col)
+
+    def square(self) -> bool:
+        dim = self.dim()
+        lines = dim[1][0] - dim[0][0] + 1
+        col = dim[1][1] - dim[0][1] + 1
+        print(lines)
+        print(col)
+        if(lines == col):
+            return True
+        else:
+            return False
 
     @staticmethod
     def eye(size: int, unitary: float = 1.0, zero: float = 0.0) -> MatrixSparseDOK:
