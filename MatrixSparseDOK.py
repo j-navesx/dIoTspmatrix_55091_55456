@@ -81,8 +81,18 @@ class MatrixSparseDOK(MatrixSparse):
         pass
 
     def col(self, col: int) -> Matrix:
-        # TODO: implement this method
-        pass
+        if not isinstance(col,int):
+            raise ValueError('spmatrix_col: invalid arguments')
+
+        row_max = self.max_row_col()[0]
+        row_min = self.min_row_col()[0]
+
+        col_matrix = MatrixSparseDOK(self._zero)
+
+        for x in range(row_min,row_max+1):
+            if(self._items.get((x,col)) != None):
+                self.__setitem__(Position(x,col),self._items.get((x,col)))
+        return col_matrix
 
     def diagonal(self) -> Matrix:
         if not (self.square()):
