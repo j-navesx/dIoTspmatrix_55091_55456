@@ -77,8 +77,18 @@ class MatrixSparseDOK(MatrixSparse):
         return ((min_row, min_col),(max_row,max_col))
 
     def row(self, row: int) -> Matrix:
-        # TODO: implement this method
-        pass
+        if not isinstance(row,int):
+            raise ValueError('spmatrix_row: invalid arguments')
+
+        row_matrix = MatrixSparseDOK(self._zero)
+        
+        col_max = self.max_row_col()[1]
+        col_min = self.min_row_col()[1]
+
+        for x in range(col_min,col_max + 1):
+            if(self._items.get((row,x)) != None):
+                self.__setitem__(Position(row,x),self._items.get((row,x)))
+        return row_matrix
 
     def col(self, col: int) -> Matrix:
         if not isinstance(col,int):
