@@ -43,8 +43,7 @@ class MatrixSparseDOK(MatrixSparse):
             self._items.update({pos: val})
 
     def __len__(self) -> int:
-        # TODO: implement this method
-        pass
+        return len(self._items)
 
     def _add_number(self, other: Union[int, float]) -> Matrix:
         # TODO: implement this method
