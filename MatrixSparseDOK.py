@@ -11,7 +11,16 @@ class MatrixSparseDOK(MatrixSparse):
             raise TypeError("__init__: invalid arguments")
         self._zero = zero
         self._items = dict()
+
+    @property
+    def zero(self) -> float:
+        return self._zero
     
+    @zero.setter
+    def zero(self, val: Union[int, float]):
+        super().zero(val)
+        self._items = {key: value for key, value in self._items.items() if (value != self._zero)}
+
     def __copy__(self):
         copy = MatrixSparseDOK(self.zero)
         copy._items = self._items
@@ -30,21 +39,26 @@ class MatrixSparseDOK(MatrixSparse):
         return self.iterator.next()
 
     def __getitem__(self, pos: Union[Position, position]) -> float:
-        # TODO: implement this method
-        pass
+        if not isinstance(pos, Position):
+            raise TypeError("__getitem__: invalid arguments")
+        return self._items.get(pos, self._zero)
 
     def __setitem__(self, pos: Union[Position, position], val: Union[int, float]):
-        # TODO: implement this method
-        pass
+        if not (isinstance(pos, Position) and isinstance(val, (int, float))):
+            raise TypeError("__setitem__: invalid arguments")
+        if(val == self._zero):
+            self._items.pop(pos, 1)
+        else:
+            self._items.update({pos: val})
 
     def __len__(self) -> int:
-        # TODO: implement this method
-        pass
+        return len(self._items)
 
     def _add_number(self, other: Union[int, float]) -> Matrix:
-        # TODO: implement this method
-        pass
-
+        if not isinstance(other, (int, float)):
+            raise TypeError("_add_number: invalid arguments")
+        self._items = {key: value+other for key, value in self._items.items()}
+            
     def _add_matrix(self, other: MatrixSparse) -> MatrixSparse:
         # TODO: implement this method
         pass
@@ -65,7 +79,7 @@ class MatrixSparseDOK(MatrixSparse):
         """
         if len(self) == 0:
             return tuple()
-        positions = list(self)
+        positions = list(self._items)
         min_row = min(p[0] for p in positions)
         min_col = min(p[1] for p in positions)
         max_row = max(p[0] for p in positions)
@@ -73,16 +87,28 @@ class MatrixSparseDOK(MatrixSparse):
         return ((min_row, min_col),(max_row,max_col))
 
     def row(self, row: int) -> Matrix:
-        # TODO: implement this method
-        pass
+        if not isinstance(row,int):
+            raise ValueError('spmatrix_row: invalid arguments')
+        return {key: value for key, value in self._items.items() if key[0] == row}
 
     def col(self, col: int) -> Matrix:
-        # TODO: implement this method
-        pass
+        if not isinstance(col,int):
+            raise ValueError('spmatrix_col: invalid arguments')
+        return {key: value for key, value in self._items.items() if key[1] == col}
 
     def diagonal(self) -> Matrix:
-        # TODO: implement this method
-        pass
+        if not (self.square()):
+            raise ValueError('spmatrix_diagonal: matrix not square')
+        return {key: value for key, value in self._items.items() if (key[0] == key[1])}
+
+    def square(self) -> bool:
+        dim = self.dim()
+        lines = dim[1][0] - dim[0][0] + 1
+        col = dim[1][1] - dim[0][1] + 1
+        if(lines == col):
+            return True
+        else:
+            return False
 
     @staticmethod
     def eye(size: int, unitary: float = 1.0, zero: float = 0.0) -> MatrixSparseDOK:

@@ -22,9 +22,6 @@ class MatrixSparse(Matrix):
             raise TypeError('zero(): invalid arguments')
         if val == self.zero:
             return
-        for pos in self:
-            if self[pos] == val:
-                self[pos] = self._zero
         self._zero = val
 
     @abstractmethod
