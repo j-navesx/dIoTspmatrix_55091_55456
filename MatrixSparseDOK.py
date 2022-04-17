@@ -37,9 +37,9 @@ class MatrixSparseDOK(MatrixSparse):
     def __setitem__(self, pos: Union[Position, position], val: Union[int, float]):
         if not (isinstance(pos, Position) and isinstance(val, (int, float))):
             raise TypeError("__setitem__: invalid arguments")
-        if(val == self._zero and self._items.get(pos) != None):
-            self._items.pop(pos)
-        if(val != self.zero):
+        if(val == self._zero):
+            self._items.pop(pos, 1)
+        else:
             self._items.update({pos: val})
 
     def __len__(self) -> int:
@@ -48,8 +48,7 @@ class MatrixSparseDOK(MatrixSparse):
     def _add_number(self, other: Union[int, float]) -> Matrix:
         if not isinstance(other, (int, float)):
             raise TypeError("_add_number: invalid arguments")
-        for key,item in self._items.items():
-            self._items.update({key: item+other})
+        self._items = {key: value+other for key, value in self._items.items()}
             
     def _add_matrix(self, other: MatrixSparse) -> MatrixSparse:
         # TODO: implement this method
@@ -71,7 +70,7 @@ class MatrixSparseDOK(MatrixSparse):
         """
         if len(self) == 0:
             return tuple()
-        positions = list(self)
+        positions = list(self._items)
         min_row = min(p[0] for p in positions)
         min_col = min(p[1] for p in positions)
         max_row = max(p[0] for p in positions)
@@ -81,79 +80,22 @@ class MatrixSparseDOK(MatrixSparse):
     def row(self, row: int) -> Matrix:
         if not isinstance(row,int):
             raise ValueError('spmatrix_row: invalid arguments')
-
-        row_matrix = MatrixSparseDOK(self._zero)
-        
-        col_max = self.max_row_col()[1]
-        col_min = self.min_row_col()[1]
-
-        for x in range(col_min,col_max + 1):
-            if(self._items.get((row,x)) != None):
-                self.__setitem__(Position(row,x),self._items.get((row,x)))
-        return row_matrix
+        return {key: value for key, value in self._items.items() if key[0] == row}
 
     def col(self, col: int) -> Matrix:
         if not isinstance(col,int):
             raise ValueError('spmatrix_col: invalid arguments')
-
-        row_max = self.max_row_col()[0]
-        row_min = self.min_row_col()[0]
-
-        col_matrix = MatrixSparseDOK(self._zero)
-
-        for x in range(row_min,row_max+1):
-            if(self._items.get((x,col)) != None):
-                self.__setitem__(Position(x,col),self._items.get((x,col)))
-        return col_matrix
+        return {key: value for key, value in self._items.items() if key[1] == col}
 
     def diagonal(self) -> Matrix:
         if not (self.square()):
             raise ValueError('spmatrix_diagonal: matrix not square')
-        
-        matrix = MatrixSparseDOK(self._zero)
-    
-        min_row, min_col = self.min_row_col()
-        max_row, max_col = self.max_row_col()
-        y = min_row
-        for x in range(min_col,max_col+1):
-            if(self._items.get((y,x)) != None):
-                matrix.__setitem__(Position(y,x),self._items.get((y,x)))
-            if(y < max_row):
-                y += 1
-        return matrix
-
-    def max_row_col(self) -> tuple:
-        first_iteration = True
-        for key in self._items.keys():
-            if(first_iteration):
-                line = key[0]
-                col = key[1]
-                first_iteration = False
-            if(key[0] > line):
-                line = key[0]
-            if(key[1] > col):
-                col = key[1]
-        return (line,col)
-
-    def min_row_col(self) -> tuple:
-        first_iteration = True
-        for key in self._items.keys():
-            if(first_iteration):
-                line = key[0]
-                col = key[1]
-                first_iteration = False
-            if(key[0] < line):
-                line = key[0]
-            if(key[1] < col):
-                col = key[1]
-        return (line,col)
+        return {key: value for key, value in self._items.items() if (key[0] == key[1])}
 
     def square(self) -> bool:
         dim = self.dim()
         lines = dim[1][0] - dim[0][0] + 1
         col = dim[1][1] - dim[0][1] + 1
-        print(lines)
-        print(col)
         if(lines == col):
             return True
         else:
