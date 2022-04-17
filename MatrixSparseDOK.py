@@ -11,7 +11,16 @@ class MatrixSparseDOK(MatrixSparse):
             raise TypeError("__init__: invalid arguments")
         self._zero = zero
         self._items = dict()
+
+    @property
+    def zero(self) -> float:
+        return self._zero
     
+    @zero.setter
+    def zero(self, val: Union[int, float]):
+        super().zero(val)
+        self._items = {key: value for key, value in self._items.items() if (value != self._zero)}
+
     def __copy__(self):
         copy = MatrixSparseDOK(self.zero)
         copy._items = self._items
