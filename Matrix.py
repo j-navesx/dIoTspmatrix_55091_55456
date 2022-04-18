@@ -64,12 +64,12 @@ class Matrix(ABC):
         dim = self.dim()
         string = ''
         if dim == (): return ''
-        row_min, row_max = (dim[0][0],dim[0][1])
-        col_min, col_max = (dim[1][0],dim[1][1])
+        row_min, row_max = (dim[0][0],dim[1][0])
+        col_min, col_max = (dim[0][1],dim[1][1])
         for row in range(row_min, row_max + 1 ):
             for col in range(col_min, col_max + 1):
                 try:
-                    string += "%.1f" % self[row,col]            
+                    string += str(self[row,col])            
                 except:
                     raise ValueError('__str__: invalid arguments')
                 string += ' '

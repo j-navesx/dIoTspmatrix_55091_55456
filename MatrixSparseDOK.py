@@ -1,4 +1,5 @@
 from __future__ import annotations
+from multiprocessing.sharedctypes import Value
 from MatrixSparse import *
 from Position import *
 from typing import Union
@@ -6,19 +7,15 @@ from typing import Union
 
 class MatrixSparseDOK(MatrixSparse):
 
-    def __init__(self, zero: float = 0.0):
+    def __init__(self, zero: float = 0):
         if not isinstance(zero, (float,int)):
-            raise TypeError("__init__: invalid arguments")
-        self._zero = zero
-        self._items = dict()
+            raise ValueError("__init__() invalid arguments")
+        super(MatrixSparseDOK, self).__init__(zero)
+        self._items = {}
 
-    @property
-    def zero(self) -> float:
-        return self._zero
-    
-    @zero.setter
+    @MatrixSparse.zero.setter
     def zero(self, val: Union[int, float]):
-        super().zero(val)
+        MatrixSparse.zero.fset(self, val)
         self._items = {key: value for key, value in self._items.items() if (value != self._zero)}
 
     def __copy__(self):
@@ -39,13 +36,19 @@ class MatrixSparseDOK(MatrixSparse):
         return self.iterator.next()
 
     def __getitem__(self, pos: Union[Position, position]) -> float:
+        if not isinstance(Position.convert_to_pos(Position,pos), Position) and not isinstance(pos, Position):
+            raise ValueError("__getitem__() invalid arguments")
         if not isinstance(pos, Position):
-            raise TypeError("__getitem__: invalid arguments")
+            pos = Position.convert_to_pos(Position, pos)
         return self._items.get(pos, self._zero)
 
     def __setitem__(self, pos: Union[Position, position], val: Union[int, float]):
-        if not (isinstance(pos, Position) and isinstance(val, (int, float))):
-            raise TypeError("__setitem__: invalid arguments")
+        if not isinstance(Position.convert_to_pos(Position, pos), Position) and not isinstance(pos, Position):
+            raise ValueError("__setitem__() invalid arguments")
+        if not isinstance(val, (int, float)):
+            raise ValueError("__setitem__() invalid arguments")
+        if not isinstance(pos, Position):
+            pos = Position.convert_to_pos(Position, pos)
         if(val == self._zero):
             self._items.pop(pos, 1)
         else:
@@ -105,10 +108,7 @@ class MatrixSparseDOK(MatrixSparse):
         dim = self.dim()
         lines = dim[1][0] - dim[0][0] + 1
         col = dim[1][1] - dim[0][1] + 1
-        if(lines == col):
-            return True
-        else:
-            return False
+        return lines == col
 
     @staticmethod
     def eye(size: int, unitary: float = 1.0, zero: float = 0.0) -> MatrixSparseDOK:

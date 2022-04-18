@@ -7,8 +7,8 @@ compressed = tuple[position, float, tuple[float], tuple[int], tuple[int]]
 class MatrixSparse(Matrix):
     _zero = float
 
-    def __init__(self, zero):
-        if not isinstance(zero, float):
+    def __init__(self, zero: float = 0):
+        if not isinstance(zero, (float,int)):
             raise TypeError("__init__: invalid arguments")
         self._zero = zero
 
