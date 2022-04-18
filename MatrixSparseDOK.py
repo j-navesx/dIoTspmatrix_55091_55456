@@ -59,8 +59,10 @@ class MatrixSparseDOK(MatrixSparse):
 
     def _add_number(self, other: Union[int, float]) -> Matrix:
         if not isinstance(other, (int, float)):
-            raise TypeError("_add_number: invalid arguments")
-        self._items = {key: value+other for key, value in self._items.items()}
+            raise ValueError("_add_number: invalid arguments")
+        mat = MatrixSparseDOK(self._zero)
+        mat._items = {key: value+other for key, value in self._items.items()}
+        return mat
             
     def _add_matrix(self, other: MatrixSparse) -> MatrixSparse:
         # TODO: implement this method
@@ -92,17 +94,23 @@ class MatrixSparseDOK(MatrixSparse):
     def row(self, row: int) -> Matrix:
         if not isinstance(row,int):
             raise ValueError('spmatrix_row: invalid arguments')
-        return {key: value for key, value in self._items.items() if key[0] == row}
+        mat = MatrixSparseDOK(self._zero)
+        mat._items = {key: value for key, value in self._items.items() if key[0] == row}
+        return mat
 
     def col(self, col: int) -> Matrix:
         if not isinstance(col,int):
             raise ValueError('spmatrix_col: invalid arguments')
-        return {key: value for key, value in self._items.items() if key[1] == col}
+        mat = MatrixSparseDOK(self._zero)
+        mat._items = {key: value for key, value in self._items.items() if key[1] == col}
+        return mat
 
     def diagonal(self) -> Matrix:
         if not (self.square()):
             raise ValueError('spmatrix_diagonal: matrix not square')
-        return {key: value for key, value in self._items.items() if (key[0] == key[1])}
+        mat = MatrixSparseDOK(self._zero)
+        mat._items = {key: value for key, value in self._items.items() if key[0] == key[1]}
+        return mat
 
     def square(self) -> bool:
         dim = self.dim()
