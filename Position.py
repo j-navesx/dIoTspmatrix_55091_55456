@@ -67,6 +67,17 @@ class Position:
         Returns:
             bool: True if the position is equal, False otherwise
         """
-        if isinstance(other, Position):
-            return self[0] == other[0] and self[1] == other[1]
-        raise TypeError("__eq__() invalid arguments")
+        if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
+            raise TypeError("__eq__() invalid arguments")
+        if not isinstance(other, Position):
+            other = self.convert_to_pos(other)
+        return self._pos == other._pos
+    
+    def convert_to_pos(self, pos: tuple[int, int]) -> Position:
+        try:
+            if len(pos) != 2:
+                raise ValueError
+            pos = Position(pos[0], pos[1])
+        except (TypeError, ValueError):
+            return None
+        return pos
