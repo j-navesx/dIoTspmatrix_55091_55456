@@ -72,8 +72,46 @@ class Position:
         if not isinstance(other, Position):
             other = self.convert_to_pos(other)
         return self._pos == other._pos
+
+    def __lt__(self, other: Position):
+        """Defines how to compare the position
+
+        Args:
+            other (Position): position to compare
+
+        Returns:
+            bool: True if the position is less than, False otherwise
+        """
+        if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
+            raise TypeError("__lt__() invalid arguments")
+        if not isinstance(other, Position):
+            other = self.convert_to_pos(other)
+        return self._pos < other._pos
+    
+    def __gt__(self, other: Position):
+        """Defines how to compare the position
+
+        Args:
+            other (Position): position to compare
+
+        Returns:
+            bool: True if the position is greater than, False otherwise
+        """
+        if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
+            raise TypeError("__gt__() invalid arguments")
+        if not isinstance(other, Position):
+            other = self.convert_to_pos(other)
+        return self._pos > other._pos
     
     def convert_to_pos(self, pos: tuple[int, int]) -> Position:
+        """Convert a tuple to a Position
+            
+        Args:
+            pos (tuple[int, int]): position to convert
+
+        Returns:
+            Position: converted position
+        """
         try:
             if len(pos) != 2:
                 raise ValueError
