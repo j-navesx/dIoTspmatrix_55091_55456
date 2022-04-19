@@ -51,8 +51,8 @@ class MatrixSparseDOK(MatrixSparse):
             bool: True if the two matrices are equal, False otherwise
         """
         if not isinstance(other, MatrixSparseDOK):
-            raise TypeError("__eq__: invalid arguments")
-        return self == other
+            raise ValueError("__eq__: invalid arguments")
+        return self._items == other._items
 
     def __iter__(self):
         """Create an iterator for the matrix
