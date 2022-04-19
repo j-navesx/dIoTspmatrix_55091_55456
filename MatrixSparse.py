@@ -22,9 +22,6 @@ class MatrixSparse(Matrix):
             raise TypeError('zero(): invalid arguments')
         if val == self.zero:
             return
-        for pos in self:
-            if self[pos] == val:
-                self[pos] = self._zero
         self._zero = val
 
     @abstractmethod
@@ -32,8 +29,20 @@ class MatrixSparse(Matrix):
         raise NotImplementedError
 
     def sparsity(self) -> float:
-        # TODO: implement this method: NAVES
-        pass
+        """Compute the sparsity of the matrix
+
+        Returns:
+            float: sparsity percentage of the matrix (between 0 and 1)
+        """
+        dimension = self.dim()
+        if len(self) == 0:
+            return 1
+        if len(self) == 1:
+            return 0
+        all_values = (dimension[1][1] - dimension[0][1] + 1) * \
+            (dimension[1][0] - dimension[0][0] + 1)
+        zero_values = all_values - len(self)
+        return float(zero_values/all_values)
 
     @staticmethod
     @abstractmethod
