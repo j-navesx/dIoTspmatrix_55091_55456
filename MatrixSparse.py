@@ -20,7 +20,7 @@ class MatrixSparse(Matrix):
     def zero(self, val: Union[int, float]):
         if not isinstance(val, (int, float)):
             raise TypeError('zero(): invalid arguments')
-        if val == self.zero:
+        if val == self._zero:
             return
         self._zero = val
 
