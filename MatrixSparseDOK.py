@@ -6,14 +6,13 @@ from typing import Union
 
 
 class MatrixSparseDOK(MatrixSparse):
-
     def __init__(self, zero: float = 0):
         """Create a new sparse matrix with Dictionary of Keys (DOK)
 
         Args:
             zero (float): value to be used for zero elements
         """
-        if not isinstance(zero, (float,int)):
+        if not isinstance(zero, (float, int)):
             raise ValueError("__init__() invalid arguments")
         super(MatrixSparseDOK, self).__init__(zero)
         self._items = {}
@@ -83,7 +82,9 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             float: the value of the element at the given position
         """
-        if not isinstance(Position.convert_to_pos(Position,pos), Position) and not isinstance(pos, Position):
+        if not isinstance(
+            Position.convert_to_pos(Position, pos), Position
+        ) and not isinstance(pos, Position):
             raise ValueError("__getitem__() invalid arguments")
         if not isinstance(pos, Position):
             pos = Position.convert_to_pos(Position, pos)
@@ -95,20 +96,22 @@ class MatrixSparseDOK(MatrixSparse):
         Args:
             pos (Union[Position, position]): the position of the element
             val (Union[int, float]): the value of the element
-        
+
         Raises:
             ValueError: if the position is not valid
-        
+
         Returns:
             None: if the value is zero
         """
-        if not isinstance(Position.convert_to_pos(Position, pos), Position) and not isinstance(pos, Position):
+        if not isinstance(
+            Position.convert_to_pos(Position, pos), Position
+        ) and not isinstance(pos, Position):
             raise ValueError("__setitem__() invalid arguments")
         if not isinstance(val, (int, float)):
             raise ValueError("__setitem__() invalid arguments")
         if not isinstance(pos, Position):
             pos = Position.convert_to_pos(Position, pos)
-        if(val == self._zero):
+        if val == self._zero:
             self._items.pop(pos, 1)
         else:
             self._items.update({pos: val})
@@ -136,9 +139,9 @@ class MatrixSparseDOK(MatrixSparse):
         if not isinstance(other, (int, float)):
             raise ValueError("_add_number: invalid arguments")
         mat = MatrixSparseDOK(self._zero)
-        mat._items = {key: value+other for key, value in self._items.items()}
+        mat._items = {key: value + other for key, value in self._items.items()}
         return mat
-            
+
     def _add_matrix(self, other: MatrixSparse) -> MatrixSparse:
         """Add a matrix to the matrix
 
@@ -156,10 +159,10 @@ class MatrixSparseDOK(MatrixSparse):
 
         Args:
             other (Union[int, float]): the number to multiply by
-        
+
         Raises:
             ValueError: if the other number is not a number
-        
+
         Returns:
             MatrixSparseDOK: the matrix with the number multiplied
         """
@@ -180,7 +183,7 @@ class MatrixSparseDOK(MatrixSparse):
 
     def dim(self) -> tuple[Position, ...]:
         """Get the dimensions of the matrix
-        
+
         Returns:
             tuple[Position, ...]: the dimensions of the matrix
         """
@@ -191,7 +194,7 @@ class MatrixSparseDOK(MatrixSparse):
         min_col = min(p[1] for p in positions)
         max_row = max(p[0] for p in positions)
         max_col = max(p[1] for p in positions)
-        return ((min_row, min_col),(max_row,max_col))
+        return ((min_row, min_col), (max_row, max_col))
 
     def row(self, row: int) -> Matrix:
         """Get the row of the matrix
@@ -205,26 +208,26 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the row of the matrix
         """
-        if not isinstance(row,int):
-            raise ValueError('spmatrix_row: invalid arguments')
+        if not isinstance(row, int):
+            raise ValueError("spmatrix_row: invalid arguments")
         mat = MatrixSparseDOK(self._zero)
         mat._items = {key: value for key, value in self._items.items() if key[0] == row}
         return mat
 
     def col(self, col: int) -> Matrix:
         """Get the column of the matrix
-        
+
         Args:
             col (int): the column to get
-            
+
         Raises:
             ValueError: if the column is not valid
 
         Returns:
             MatrixSparseDOK: the column of the matrix
         """
-        if not isinstance(col,int):
-            raise ValueError('spmatrix_col: invalid arguments')
+        if not isinstance(col, int):
+            raise ValueError("spmatrix_col: invalid arguments")
         mat = MatrixSparseDOK(self._zero)
         mat._items = {key: value for key, value in self._items.items() if key[1] == col}
         return mat
@@ -236,7 +239,7 @@ class MatrixSparseDOK(MatrixSparse):
             MatrixSparseDOK: the diagonal of the matrix
         """
         if not (self.square()):
-            raise ValueError('spmatrix_diagonal: matrix not square')
+            raise ValueError("spmatrix_diagonal: matrix not square")
         mat = MatrixSparseDOK(self._zero)
         mat._items = {key: value for key, value in self._items.items() if key[0] == key[1]}
         return mat
@@ -255,7 +258,7 @@ class MatrixSparseDOK(MatrixSparse):
     @staticmethod
     def eye(size: int, unitary: float = 1.0, zero: float = 0.0) -> MatrixSparseDOK:
         """Create an identity matrix
-            
+
         Args:
             size (int): the size of the matrix
             unitary (float): the value of the unitary elements
@@ -266,15 +269,15 @@ class MatrixSparseDOK(MatrixSparse):
         """
         mat = MatrixSparseDOK(zero)
         for i in range(size):
-            mat[i,i] = unitary
+            mat[i, i] = unitary
         return mat
 
     def transpose(self) -> MatrixSparseDOK:
         """Transpose the matrix
-            
-            Returns:
-                MatrixSparseDOK: the transpose of the matrix
-            """
+
+        Returns:
+            MatrixSparseDOK: the transpose of the matrix
+        """
         mat = MatrixSparseDOK(self._zero)
         for key, value in self._items.items():
             mat[key[1], key[0]] = value
@@ -292,7 +295,7 @@ class MatrixSparseDOK(MatrixSparse):
     @staticmethod
     def doi(compressed_vector: compressed, pos: Position) -> float:
         """Get the value of the element at the given position
-            
+
         Args:
             compressed_vector (compressed): the compressed vector
             pos (Position): the position of the element
@@ -315,4 +318,3 @@ class MatrixSparseDOK(MatrixSparse):
         """
         # TODO: implement this method
         pass
-
