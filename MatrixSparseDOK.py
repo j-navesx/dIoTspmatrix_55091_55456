@@ -1,5 +1,5 @@
 from __future__ import annotations
-from multiprocessing.sharedctypes import Value
+from functools import reduce
 from MatrixSparse import *
 from Position import *
 from typing import Union
@@ -50,7 +50,7 @@ class MatrixSparseDOK(MatrixSparse):
             bool: True if the two matrices are equal, False otherwise
         """
         if not isinstance(other, MatrixSparseDOK):
-            raise ValueError("__eq__: invalid arguments")
+            return False
         return self._items == other._items
 
     def __iter__(self):
@@ -59,8 +59,8 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: an iterator for the matrix
         """
-        self.iterator = iter(sorted(self._items))
-        return self.iterator
+        self._iterator = iter(sorted(self._items))
+        return self._iterator
 
     def __next__(self):
         """Get the next element of the matrix
@@ -68,7 +68,7 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             tuple[Position, float]: the next element of the matrix
         """
-        return self.iterator.next()
+        return self._iterator.next()
 
     def __getitem__(self, pos: Union[Position, position]) -> float:
         """Get the value of the element at the given position
@@ -142,7 +142,7 @@ class MatrixSparseDOK(MatrixSparse):
         mat._items = {key: value + other for key, value in self._items.items()}
         return mat
 
-    def _add_matrix(self, other: MatrixSparse) -> MatrixSparse:
+    def _add_matrix(self, other: MatrixSparseDOK) -> MatrixSparseDOK:
         """Add a matrix to the matrix
 
         Args:
@@ -151,8 +151,21 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the matrix with the other matrix added
         """
-        # TODO: implement this method
-        pass
+        if not isinstance(other, MatrixSparseDOK):
+            raise ValueError("_add_matrix() invalid arguments")
+        if self.zero != other.zero:
+            raise ValueError("_add_matrix() incompatible matrices")
+        dim1 = self.dim()
+        dim2 = other.dim()
+        size1_x = dim1[1][0] - dim1[0][0] + 1
+        size1_y = dim1[1][1] - dim1[0][1] + 1
+        size2_x = dim2[1][0] - dim2[0][0] + 1
+        size2_y = dim2[1][1] - dim2[0][1] + 1
+        if size1_x != size2_x or size1_y != size2_y:
+            raise ValueError("_add_matrix() incompatible matrices")
+        mat = MatrixSparseDOK(self.zero)
+        mat._items = reduce(lambda d1, d2: {k: d1.get(k,0)+d2.get(k,0) for k in set(d1)|set(d2)}, [self._items, other._items])
+        return mat
 
     def _mul_number(self, other: Union[int, float]) -> Matrix:
         """Multiply the matrix by a number
@@ -267,6 +280,10 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the identity matrix
         """
+        if not isinstance(size, int) or size < 1:
+            raise ValueError("eye() invalid parameters")
+        if not isinstance(unitary, (int, float)) or not isinstance(zero, (int, float)):
+            raise ValueError("eye() invalid parameters")
         mat = MatrixSparseDOK(zero)
         for i in range(size):
             mat[i, i] = unitary
