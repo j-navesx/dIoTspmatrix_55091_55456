@@ -306,8 +306,88 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             compressed: the compressed matrix
         """
-        # TODO: implement this method
-        pass
+        if self.sparsity() < 0.5:
+            raise ValueError("compress() dense matrix")
+        dim = self.dim()
+        upper_left_pos = dim[0]
+        zero = self._zero
+        offsets = []
+        # Auxiliary variables
+        rows = []
+        indexs = []
+        # Getting the rows and indexs of the matrix into auxiliary variables
+        for row in range(dim[0][0], dim[1][0]+1):
+            r = self.row(row)
+            li = []
+            ind = []
+            for col in range(dim[0][1], dim[1][1]+1):
+                li.append(r[row,col])
+                ind.append(row)
+            rows.append(li)
+            indexs.append(ind)
+        
+        counts = [x.count(zero) for x in rows]
+        # Order the rows based on density
+        rows = sorted(rows, key=lambda x: x.count(zero))
+        # Assign first denser row
+        merged = rows[0]
+        # Order the indexes based on density
+        indexs = [i for _,i in sorted(zip(counts,indexs))]
+        # Assign first denser index
+        index_list = indexs[0]
+        # Calculate the first offset and add it
+        for val in merged:
+            if val != zero:
+                offsets.append(merged.index(val))
+                break
+        # Merge the rest of the rows
+        for i in range(1,len(rows)):
+            if not all(x == zero for x in rows[i]):
+                offset, merged, index_list = self.compress_merge_offset(0, merged, rows[i], index_list, indexs[i], zero)
+            else:
+                offset = 0
+            if offset == len(merged):
+                merged += rows[i]
+                index_list += indexs[i]
+            offsets.append(offset)
+        values = merged
+        indexes = index_list
+        # Mark uneccessary zeros
+        for val in reversed(list(merged)):
+            if val != zero:
+                break
+            indexes[merged.index(val)] = -1
+        # Order offsets
+        order_of_indexes = [ind[0] for ind in indexs]
+        offsets = [i for _,i in sorted(zip(order_of_indexes,offsets))]
+        return (upper_left_pos, zero, tuple(values), tuple(indexes), tuple(offsets))
+
+    def compress_merge_offset(self,offset, list1, list2, row1, row2, zero):
+        a = [1 if v!=zero else 0 for v in list1]
+        a += [0 for _ in list2]
+        b = [0 for _ in range(offset)]
+        b += [2 if v!=zero else 0 for v in list2]
+        c = [sum(x) for x in zip(a,b)]
+        if 3 in c:
+            return self.compress_merge_offset(offset+1, list1, list2, row1, row2, zero)
+        else:
+            merged = []
+            indexes = []
+            list2 = [zero for _ in range(offset)] + list2
+            row2 = [row2[0] for _ in range(len(list2))]
+            for i in range(len(list2)):
+                if i < len(list1):
+                    if list1[i] == zero:
+                        merged.append(list2[i])
+                        indexes.append(row2[0])
+                    else:
+                        merged.append(list1[i])
+                        indexes.append(row1[i])
+                else:
+                    merged.append(list2[i])
+                    indexes.append(row2[i])
+
+            return offset, merged, indexes
 
     @staticmethod
     def doi(compressed_vector: compressed, pos: Position) -> float:
