@@ -280,7 +280,7 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the identity matrix
         """
-        if not isinstance(size, int) or size < 1:
+        if not isinstance(size, int) or size < 0:
             raise ValueError("eye() invalid parameters")
         if not isinstance(unitary, (int, float)) or not isinstance(zero, (int, float)):
             raise ValueError("eye() invalid parameters")
@@ -300,94 +300,98 @@ class MatrixSparseDOK(MatrixSparse):
             mat[key[1], key[0]] = value
         return mat
 
+    def merge_two_lists(self, offset, list1, indexes1, list2, indexes2, zero) -> tuple[int, list, list]:
+        """Merge two lists of indexes
+
+        Args:
+            offset (int): the offset to add to the indexes
+            list1 (list): the first list of indexes
+            indexes1 (list): the indexes of the first list
+            list2 (list): the second list of indexes
+            indexes2 (list): the indexes of the second list
+            zero (float): the value of the zero elements
+
+        Returns:
+            tuple[int, list, list]: the offset, the merged list and the merged indexes
+        """
+        list_1 = [1 if x != zero else 0 for x in list1] + [0] * offset
+        list_2 = [0] * offset + [2 if x != zero else 0 for x in list2]
+        list_sum = [x + y for x, y in zip(list_1, list_2)]
+        if 3 in list_sum:
+            return self.merge_two_lists(offset + 1, list1, indexes1, list2, indexes2, zero)
+        else:
+            merged_list = [list1[i] if list_sum[i] == 1 else list2[i - offset] for i in range(len(list_sum))]
+            indexes = [indexes1[i] if list_sum[i] == 1 else indexes2[i - offset] for i in range(len(list_sum))]
+            for val in reversed(merged_list):
+                if val != 0:
+                    break
+                indexes[merged_list.index(val)] = -1
+            return offset, merged_list, indexes
+
+    def order_by_density(self, list_of_lists, indexes, zero) -> tuple[list, list]:
+        """Order a list of lists by density of the values not equal to zero
+
+        Args:
+            list_of_lists (list): the list of lists to order
+            indexes (list): the list of indexes of the lists
+            zero (float): the value of the zero elements
+
+        Returns:
+            tuple[list, list]: the ordered list of lists and the indexes of the lists
+        """
+        # measure the density of zeros in each list
+        zeros = [lis.count(zero) for lis in list_of_lists]
+        # order the list zeros and keep the orignal indexes
+        rows = sorted(list_of_lists, key=lambda x: x.count(zero))
+        # zeros_ordered = [x for _, x in sorted(zip(zeros, list_of_lists))]
+        # order the indexes by the zeros
+        indexes_ordered = [x for _, x in sorted(zip(zeros, indexes))]
+        return rows, indexes_ordered
+        
     def compress(self) -> compressed:
         """Compress the matrix
+
+        Raises:
+            ValueError: if the matrix is to dense
 
         Returns:
             compressed: the compressed matrix
         """
         if self.sparsity() < 0.5:
             raise ValueError("compress() dense matrix")
+        zero = self._zero
         dim = self.dim()
         upper_left_pos = dim[0]
-        zero = self._zero
+        # get all the rows in the dim
+        rows = [[self.row(row)._items.get((row,col),zero) for col in range(dim[0][1], dim[1][1]+1)] for row in range(dim[0][0], dim[1][0]+1)]
+        indexes = [[i]*len(rows[0]) for i in range(dim[0][0], dim[1][0]+1)]
+        # order the rows by density of zeros
+        rows_ordered, indexes_ordered = self.order_by_density(rows, indexes, zero)
+        # insert first row and index
+        merged_rows = rows_ordered[0]
+        merged_indexes = indexes_ordered[0]
         offsets = []
-        # Auxiliary variables
-        rows = []
-        indexs = []
-        # Getting the rows and indexs of the matrix into auxiliary variables
-        for row in range(dim[0][0], dim[1][0]+1):
-            r = self.row(row)
-            li = []
-            ind = []
-            for col in range(dim[0][1], dim[1][1]+1):
-                li.append(r[row,col])
-                ind.append(row)
-            rows.append(li)
-            indexs.append(ind)
-        
-        counts = [x.count(zero) for x in rows]
-        # Order the rows based on density
-        rows = sorted(rows, key=lambda x: x.count(zero))
-        # Assign first denser row
-        merged = rows[0]
-        # Order the indexes based on density
-        indexs = [i for _,i in sorted(zip(counts,indexs))]
-        # Assign first denser index
-        index_list = indexs[0]
-        # Calculate the first offset and add it
-        for val in merged:
+        # calculate the first offset
+        for val in merged_rows:
             if val != zero:
-                offsets.append(merged.index(val))
+                offsets.append(merged_rows.index(val))
                 break
-        # Merge the rest of the rows
-        for i in range(1,len(rows)):
-            if not all(x == zero for x in rows[i]):
-                offset, merged, index_list = self.compress_merge_offset(0, merged, rows[i], index_list, indexs[i], zero)
-            else:
-                offset = 0
-            if offset == len(merged):
-                merged += rows[i]
-                index_list += indexs[i]
-            offsets.append(offset)
-        values = merged
-        indexes = index_list
-        # Mark uneccessary zeros
-        for val in reversed(list(merged)):
-            if val != zero:
-                break
-            indexes[merged.index(val)] = -1
-        # Order offsets
-        order_of_indexes = [ind[0] for ind in indexs]
-        offsets = [i for _,i in sorted(zip(order_of_indexes,offsets))]
-        return (upper_left_pos, zero, tuple(values), tuple(indexes), tuple(offsets))
-
-    def compress_merge_offset(self,offset, list1, list2, row1, row2, zero):
-        a = [1 if v!=zero else 0 for v in list1]
-        a += [0 for _ in list2]
-        b = [0 for _ in range(offset)]
-        b += [2 if v!=zero else 0 for v in list2]
-        c = [sum(x) for x in zip(a,b)]
-        if 3 in c:
-            return self.compress_merge_offset(offset+1, list1, list2, row1, row2, zero)
-        else:
-            merged = []
-            indexes = []
-            list2 = [zero for _ in range(offset)] + list2
-            row2 = [row2[0] for _ in range(len(list2))]
-            for i in range(len(list2)):
-                if i < len(list1):
-                    if list1[i] == zero:
-                        merged.append(list2[i])
-                        indexes.append(row2[0])
-                    else:
-                        merged.append(list1[i])
-                        indexes.append(row1[i])
+        for row, index in zip(rows_ordered, indexes_ordered):
+            # skip first row (already added)
+            if rows_ordered.index(row) != 0:
+                # skip rows with all zeros
+                if not all(val == zero for val in row):
+                    offset, merged_rows, merged_indexes = self.merge_two_lists(0, merged_rows, merged_indexes,row, index, zero)
                 else:
-                    merged.append(list2[i])
-                    indexes.append(row2[i])
-
-            return offset, merged, indexes
+                    offset = 0
+                # if cant add in the list add in front
+                if offset == len(merged_rows):
+                    merged_rows += row
+                    merged_indexes += index
+                offsets.append(offset)
+        # order offsets by the index of the row
+        offsets_ordered = [x for _, x in sorted(zip(indexes_ordered, offsets))]
+        return (upper_left_pos, zero, tuple(merged_rows), tuple(merged_indexes), tuple(offsets_ordered)) 
 
     @staticmethod
     def doi(compressed_vector: compressed, pos: Position) -> float:
