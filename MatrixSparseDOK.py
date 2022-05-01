@@ -1,5 +1,5 @@
 from __future__ import annotations
-from multiprocessing.sharedctypes import Value
+from functools import reduce
 from MatrixSparse import *
 from Position import *
 from typing import Union
@@ -50,7 +50,7 @@ class MatrixSparseDOK(MatrixSparse):
             bool: True if the two matrices are equal, False otherwise
         """
         if not isinstance(other, MatrixSparseDOK):
-            raise ValueError("__eq__: invalid arguments")
+            return False
         return self._items == other._items
 
     def __iter__(self):
@@ -59,8 +59,8 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: an iterator for the matrix
         """
-        self.iterator = iter(sorted(self._items))
-        return self.iterator
+        self._iterator = iter(sorted(self._items))
+        return self._iterator
 
     def __next__(self):
         """Get the next element of the matrix
@@ -68,7 +68,7 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             tuple[Position, float]: the next element of the matrix
         """
-        return self.iterator.next()
+        return self._iterator.next()
 
     def __getitem__(self, pos: Union[Position, position]) -> float:
         """Get the value of the element at the given position
@@ -142,7 +142,7 @@ class MatrixSparseDOK(MatrixSparse):
         mat._items = {key: value + other for key, value in self._items.items()}
         return mat
 
-    def _add_matrix(self, other: MatrixSparse) -> MatrixSparse:
+    def _add_matrix(self, other: MatrixSparseDOK) -> MatrixSparseDOK:
         """Add a matrix to the matrix
 
         Args:
@@ -151,8 +151,21 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the matrix with the other matrix added
         """
-        # TODO: implement this method
-        pass
+        if not isinstance(other, MatrixSparseDOK):
+            raise ValueError("_add_matrix() invalid arguments")
+        if self.zero != other.zero:
+            raise ValueError("_add_matrix() incompatible matrices")
+        dim1 = self.dim()
+        dim2 = other.dim()
+        size1_x = dim1[1][0] - dim1[0][0] + 1
+        size1_y = dim1[1][1] - dim1[0][1] + 1
+        size2_x = dim2[1][0] - dim2[0][0] + 1
+        size2_y = dim2[1][1] - dim2[0][1] + 1
+        if size1_x != size2_x or size1_y != size2_y:
+            raise ValueError("_add_matrix() incompatible matrices")
+        mat = MatrixSparseDOK(self.zero)
+        mat._items = reduce(lambda d1, d2: {k: d1.get(k,0)+d2.get(k,0) for k in set(d1)|set(d2)}, [self._items, other._items])
+        return mat
 
     def _mul_number(self, other: Union[int, float]) -> Matrix:
         """Multiply the matrix by a number
@@ -267,6 +280,10 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the identity matrix
         """
+        if not isinstance(size, int) or size < 0:
+            raise ValueError("eye() invalid parameters")
+        if not isinstance(unitary, (int, float)) or not isinstance(zero, (int, float)):
+            raise ValueError("eye() invalid parameters")
         mat = MatrixSparseDOK(zero)
         for i in range(size):
             mat[i, i] = unitary
@@ -283,14 +300,98 @@ class MatrixSparseDOK(MatrixSparse):
             mat[key[1], key[0]] = value
         return mat
 
+    def merge_two_lists(self, offset, list1, indexes1, list2, indexes2, zero) -> tuple[int, list, list]:
+        """Merge two lists of indexes
+
+        Args:
+            offset (int): the offset to add to the indexes
+            list1 (list): the first list of indexes
+            indexes1 (list): the indexes of the first list
+            list2 (list): the second list of indexes
+            indexes2 (list): the indexes of the second list
+            zero (float): the value of the zero elements
+
+        Returns:
+            tuple[int, list, list]: the offset, the merged list and the merged indexes
+        """
+        list_1 = [1 if x != zero else 0 for x in list1] + [0] * offset
+        list_2 = [0] * offset + [2 if x != zero else 0 for x in list2]
+        list_sum = [x + y for x, y in zip(list_1, list_2)]
+        if 3 in list_sum:
+            return self.merge_two_lists(offset + 1, list1, indexes1, list2, indexes2, zero)
+        else:
+            merged_list = [list1[i] if list_sum[i] == 1 else list2[i - offset] for i in range(len(list_sum))]
+            indexes = [indexes1[i] if list_sum[i] == 1 else indexes2[i - offset] for i in range(len(list_sum))]
+            for val in reversed(merged_list):
+                if val != 0:
+                    break
+                indexes[merged_list.index(val)] = -1
+            return offset, merged_list, indexes
+
+    def order_by_density(self, list_of_lists, indexes, zero) -> tuple[list, list]:
+        """Order a list of lists by density of the values not equal to zero
+
+        Args:
+            list_of_lists (list): the list of lists to order
+            indexes (list): the list of indexes of the lists
+            zero (float): the value of the zero elements
+
+        Returns:
+            tuple[list, list]: the ordered list of lists and the indexes of the lists
+        """
+        # measure the density of zeros in each list
+        zeros = [lis.count(zero) for lis in list_of_lists]
+        # order the list zeros and keep the orignal indexes
+        rows = sorted(list_of_lists, key=lambda x: x.count(zero))
+        # zeros_ordered = [x for _, x in sorted(zip(zeros, list_of_lists))]
+        # order the indexes by the zeros
+        indexes_ordered = [x for _, x in sorted(zip(zeros, indexes))]
+        return rows, indexes_ordered
+        
     def compress(self) -> compressed:
         """Compress the matrix
+
+        Raises:
+            ValueError: if the matrix is to dense
 
         Returns:
             compressed: the compressed matrix
         """
-        # TODO: implement this method
-        pass
+        if self.sparsity() < 0.5:
+            raise ValueError("compress() dense matrix")
+        zero = self._zero
+        dim = self.dim()
+        upper_left_pos = dim[0]
+        # get all the rows in the dim
+        rows = [[self.row(row)._items.get((row,col),zero) for col in range(dim[0][1], dim[1][1]+1)] for row in range(dim[0][0], dim[1][0]+1)]
+        indexes = [[i]*len(rows[0]) for i in range(dim[0][0], dim[1][0]+1)]
+        # order the rows by density of zeros
+        rows_ordered, indexes_ordered = self.order_by_density(rows, indexes, zero)
+        # insert first row and index
+        merged_rows = rows_ordered[0]
+        merged_indexes = indexes_ordered[0]
+        offsets = []
+        # calculate the first offset
+        for val in merged_rows:
+            if val != zero:
+                offsets.append(merged_rows.index(val))
+                break
+        for row, index in zip(rows_ordered, indexes_ordered):
+            # skip first row (already added)
+            if rows_ordered.index(row) != 0:
+                # skip rows with all zeros
+                if not all(val == zero for val in row):
+                    offset, merged_rows, merged_indexes = self.merge_two_lists(0, merged_rows, merged_indexes,row, index, zero)
+                else:
+                    offset = 0
+                # if cant add in the list add in front
+                if offset == len(merged_rows):
+                    merged_rows += row
+                    merged_indexes += index
+                offsets.append(offset)
+        # order offsets by the index of the row
+        offsets_ordered = [x for _, x in sorted(zip(indexes_ordered, offsets))]
+        return (upper_left_pos, zero, tuple(merged_rows), tuple(merged_indexes), tuple(offsets_ordered)) 
 
     @staticmethod
     def doi(compressed_vector: compressed, pos: Position) -> float:
