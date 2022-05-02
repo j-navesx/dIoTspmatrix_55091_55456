@@ -179,8 +179,11 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the matrix with the number multiplied
         """
-        # TODO: implement this method
-        pass
+        if not isinstance(other, (int, float)):
+            raise ValueError("_mul_number: invalid arguments")
+        mat = MatrixSparseDOK(self._zero)
+        mat._items = {key: value * other for key, value in self._items.items()}
+        return mat
 
     def _mul_matrix(self, other: MatrixSparse) -> MatrixSparse:
         """Multiply the matrix by another matrix
@@ -191,8 +194,39 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the matrix with the other matrix multiplied
         """
-        # TODO: implement this method
-        pass
+        if not isinstance(other, MatrixSparseDOK):
+            raise ValueError("_mul_matrix() invalid arguments")
+        if self.zero != other.zero:
+            raise ValueError("_mul_matrix() incompatible matrices")
+
+        dim1 = self.dim()
+        dim2 = other.dim()
+        size1_x = dim1[1][0] - dim1[0][0] + 1 #M1 rows dimension
+        size1_y = dim1[1][1] - dim1[0][1] + 1 #M1 col dimension
+        size2_x = dim2[1][0] - dim2[0][0] + 1 #M2 rows dimension
+        size2_y = dim2[1][1] - dim2[0][1] + 1 #M2 col dimension
+
+        if size1_y != size2_x:
+          raise ValueError("_mul_matrix() incompatible matrices")
+
+        min_row_m1 = dim1[0][0]
+        min_col_m1 = dim1[0][1]
+        min_row_m2 = dim2[0][0]
+        min_col_m2 = dim2[0][1]
+
+        mat = MatrixSparseDOK(self._zero)
+
+        dic = {}
+        #very cringe loops o meu cerebro esta a morrer apos ter que calcular isto mas funciona sempre creio eu
+        for i in range(size1_x):
+            for j in range(size2_y):
+                for k in range(size2_x):
+                    dic.update({(i+min_row_m1,j+min_col_m2): dic.get((i+min_row_m1,j+min_col_m2),0) 
+                    + self._items.get((i+min_row_m1,k+min_col_m1),0)*other._items.get((k+min_row_m2,j+min_col_m2),0)})
+
+        mat._items = dic
+        return mat
+  
 
     def dim(self) -> tuple[Position, ...]:
         """Get the dimensions of the matrix
