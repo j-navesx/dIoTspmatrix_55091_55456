@@ -225,6 +225,7 @@ class MatrixSparseDOK(MatrixSparse):
 
         mat._items = dic
         return mat
+        
   
 
     def dim(self) -> tuple[Position, ...]:
@@ -502,8 +503,7 @@ class MatrixSparseDOK(MatrixSparse):
             raise ValueError("decompress() invalid parameters")
         if not isinstance(compressed_vector[4], tuple):
             raise ValueError("decompress() invalid parameters")
-        if len(set(compressed_vector[3])) != len(compressed_vector[4]):
-            raise ValueError("decompress() invalid parameters")
+
         upper_left_pos = compressed_vector[0]
         zero = compressed_vector[1]
         value_rows = compressed_vector[2]
