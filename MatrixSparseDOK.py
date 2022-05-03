@@ -103,13 +103,12 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             None: if the value is zero
         """
-        if not isinstance(
-            Position.convert_to_pos(Position, pos), Position
-        ) and not isinstance(pos, Position):
-            raise ValueError("__setitem__() invalid arguments")
         if not isinstance(val, (int, float)):
             raise ValueError("__setitem__() invalid arguments")
         if not isinstance(pos, Position):
+            if not isinstance(Position.convert_to_pos(Position, pos), Position
+        ) and not isinstance(pos, Position):
+                raise ValueError("__setitem__() invalid arguments")
             pos = Position.convert_to_pos(Position, pos)
         if val == self._zero:
             self._items.pop(pos, 1)
@@ -226,6 +225,7 @@ class MatrixSparseDOK(MatrixSparse):
 
         mat._items = dic
         return mat
+        
   
   
     def dim(self) -> tuple[Position, ...]:
@@ -438,11 +438,45 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             float: the value of the element at the given position
         """
-        # TODO: implement this method
-        pass
+        if not isinstance(compressed_vector, tuple):
+            raise ValueError("doi() invalid parameters")
+        if len(compressed_vector) != 5:
+            raise ValueError("doi() invalid parameters")
+        if not isinstance(compressed_vector[0], tuple):
+            raise ValueError("doi() invalid parameters")
+        if len(compressed_vector[0]) != 2:
+            raise ValueError("doi() invalid parameters")
+        if not isinstance(compressed_vector[1], float):
+            raise ValueError("doi() invalid parameters")
+        if not isinstance(compressed_vector[2], tuple):
+            raise ValueError("doi() invalid parameters")
+        if not isinstance(compressed_vector[3], tuple):
+            raise ValueError("doi() invalid parameters")
+        if len(compressed_vector[2]) != len(compressed_vector[3]):
+            raise ValueError("doi() invalid parameters")
+        if not isinstance(compressed_vector[4], tuple):
+            raise ValueError("doi() invalid parameters")
+        if not isinstance(pos, Position):
+            if not isinstance(
+            Position.convert_to_pos(Position, pos), Position
+            ) and not isinstance(pos, Position):
+                raise ValueError("doi() invalid arguments")
+            pos = Position.convert_to_pos(Position, pos)
+        upper_left_pos = compressed_vector[0]
+        zero = compressed_vector[1]
+        value_rows = compressed_vector[2]
+        value_indexes = compressed_vector[3]
+        offsets = compressed_vector[4]
+        offsets = [upper_left_pos[1] - off for off in offsets]
+        indexes_sorted = sorted(list(set(value_indexes)))
+        if -1 in indexes_sorted:
+            indexes_sorted.remove(-1)
+        offsets_dic = {ind: offsets[i] for i,ind in enumerate(range(indexes_sorted[0], indexes_sorted[-1]+1))}
+        index_value_dic = {(index, col+offsets_dic.get(index)): value for col, (index, value) in enumerate(zip(value_indexes, value_rows)) if index != -1}
+        return index_value_dic.get(pos, zero)
 
     @staticmethod
-    def decompress(compressed_vector: compressed) -> MatrixSparse:
+    def decompress(compressed_vector: compressed) -> MatrixSparseDOK:
         """Decompress the matrix
 
         Args:
@@ -451,5 +485,46 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             MatrixSparseDOK: the decompressed matrix
         """
-        # TODO: implement this method
-        pass
+        if not isinstance(compressed_vector, tuple):
+            raise ValueError("decompress() invalid parameters")
+        if len(compressed_vector) != 5:
+            raise ValueError("decompress() invalid parameters")
+        if not isinstance(compressed_vector[0], tuple):
+            raise ValueError("decompress() invalid parameters")
+        if len(compressed_vector[0]) != 2:
+            raise ValueError("decompress() invalid parameters")
+        if not isinstance(compressed_vector[1], float):
+            raise ValueError("decompress() invalid parameters")
+        if not isinstance(compressed_vector[2], tuple):
+            raise ValueError("decompress() invalid parameters")
+        if not isinstance(compressed_vector[3], tuple):
+            raise ValueError("decompress() invalid parameters")
+        if len(compressed_vector[2]) != len(compressed_vector[3]):
+            raise ValueError("decompress() invalid parameters")
+        if not isinstance(compressed_vector[4], tuple):
+            raise ValueError("decompress() invalid parameters")
+
+        upper_left_pos = compressed_vector[0]
+        zero = compressed_vector[1]
+        value_rows = compressed_vector[2]
+        value_indexes = compressed_vector[3]
+        offsets = compressed_vector[4]
+        offsets = [upper_left_pos[1] - off for off in offsets]
+        # Create a new matrix
+        matrix = MatrixSparseDOK(zero)
+        # Create a list merging the values with the indexes
+        index_value = [((index, col), value) for col, (index, value) in enumerate(zip(value_indexes, value_rows))]
+        # list of indexes sorted no repetitions 
+        indexes_sorted = sorted(list(set(value_indexes)))
+        if -1 in indexes_sorted:
+            indexes_sorted.remove(-1)
+        ind_off = [(ind,offsets[i]) for i, ind in enumerate(range(indexes_sorted[0], indexes_sorted[-1]+1))]
+        for index, offset in ind_off:
+            # get the values of the row
+            values = [(position, val) for position, val in index_value if position[0] == index]
+            # insert the values in the matrix
+            for position, value in values:
+                if position[0] != -1:
+                    matrix[index, (position[1]+offset)] = value
+        return matrix
+
