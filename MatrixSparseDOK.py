@@ -227,7 +227,7 @@ class MatrixSparseDOK(MatrixSparse):
         mat._items = dic
         return mat
   
-
+  
     def dim(self) -> tuple[Position, ...]:
         """Get the dimensions of the matrix
 
