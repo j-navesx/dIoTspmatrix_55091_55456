@@ -5,7 +5,10 @@ from Position import *
 from typing import Union
 
 
-class MatrixSparseDOK(MatrixSparse):
+class MatrixSparseCSR(MatrixSparse):
+    # V -> Value matrix row, column order
+    # Col_index -> Column number for every value
+    # Row_count -> Count of the number of values per row
     def __init__(self, zero: float = 0):
         """Create a new sparse matrix with Dictionary of Keys (DOK)
 
@@ -14,8 +17,10 @@ class MatrixSparseDOK(MatrixSparse):
         """
         if not isinstance(zero, (float, int)):
             raise ValueError("__init__() invalid arguments")
-        super(MatrixSparseDOK, self).__init__(zero)
-        self._items = {}
+        super(MatrixSparseCSR, self).__init__(zero)
+        self._values = []
+        self._col_index = []
+        self._row_count = []
 
     @MatrixSparse.zero.setter
     def zero(self, val: Union[int, float]):
@@ -25,23 +30,28 @@ class MatrixSparseDOK(MatrixSparse):
             val (Union[int, float]): value to be used for zero elements
         """
         MatrixSparse.zero.fset(self, val)
-        self._items = {key: value for key, value in self._items.items() if (value != self._zero)}
+        for key in self:
+            if self[key] == self.zero:
+                self.del_pos(key)
+        
 
     def __copy__(self):
         """Create a copy of the matrix
 
         Returns:
-            MatrixSparseDOK: a copy of the matrix
+            MatrixSparseCSR: a copy of the matrix
         """
-        copy = MatrixSparseDOK(self.zero)
-        copy._items = self._items
+        copy = MatrixSparseCSR(self.zero)
+        copy._values = self._values
+        copy._col_index = self._col_index
+        copy._row_count = self._row_count
         return copy
 
-    def __eq__(self, other: MatrixSparseDOK):
+    def __eq__(self, other: MatrixSparseCSR):
         """Compare two sparse matrices
 
         Args:
-            other (MatrixSparseDOK): the matrix to compare with
+            other (MatrixSparseCSR): the matrix to compare with
 
         Raises:
             ValueError: if the other matrix is not a sparse matrix
@@ -49,17 +59,21 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             bool: True if the two matrices are equal, False otherwise
         """
-        if not isinstance(other, MatrixSparseDOK):
+        if not isinstance(other, MatrixSparseCSR):
             return False
-        return self._items == other._items
+        return self._values == other._values and self._col_index == other._col_index and self._row_count == other._row_count
+        
 
     def __iter__(self):
         """Create an iterator for the matrix
 
         Returns:
-            MatrixSparseDOK: an iterator for the matrix
+            MatrixSparseCSR: an iterator for the matrix
         """
-        self._iterator = iter(sorted(self._items))
+        rows = [i for i in range(self._row_count[0],self._row_count[0] + len(self._row_count[1:]))]
+        cols = [i for i in range(min(self._col_index), max(self._col_index) + 1)]
+        rows_cols = list(zip(rows, cols))
+        self._iterator = iter(rows_cols)
         return self._iterator
 
     def __next__(self):
@@ -69,6 +83,29 @@ class MatrixSparseDOK(MatrixSparse):
             tuple[Position, float]: the next element of the matrix
         """
         return self._iterator.next()
+
+    def del_pos(self, pos: Union[Position, position]):
+        """Delete the element at the given position
+
+        Args:
+            pos (Union[Position, position]): the position of the element to delete
+        """
+        if not isinstance(pos, Position):
+            pos = Position.convert_to_pos(Position, pos)
+        sel_r = pos[0]
+        sel_c = pos[1]
+        if sel_r < self._row_count[0] or sel_r > self._row_count[0] + len(self._row_count[1:]):
+            return
+        available_cols = self._col_index[self._row_count[sel_r]:self._row_count[sel_r+1]]
+        if not (sel_c in available_cols):
+            return
+        index = self._row_count[sel_r] + available_cols.index(sel_c)
+        self._values.pop(index)
+        self._col_index.pop(index)
+        for row in range(sel_r, len(self._row_count)):
+            self._row_count[row] -= 1
+        
+
 
     def __getitem__(self, pos: Union[Position, position]) -> float:
         """Get the value of the element at the given position
@@ -88,7 +125,14 @@ class MatrixSparseDOK(MatrixSparse):
             raise ValueError("__getitem__() invalid arguments")
         if not isinstance(pos, Position):
             pos = Position.convert_to_pos(Position, pos)
-        return self._items.get(pos, self._zero)
+        sel_r = pos[0]
+        sel_c = pos[1]
+        if sel_r < self._row_count[0] or sel_r > self._row_count[0] + len(self._row_count[1:]):
+            return 0.0
+        available_cols = self._col_index[self._row_count[sel_r]:self._row_count[sel_r+1]]
+        if not (sel_c in available_cols):
+            return 0.0
+        return self._values[self._row_count[sel_r] + available_cols.index(sel_c)]
 
     def __setitem__(self, pos: Union[Position, position], val: Union[int, float]):
         """Set the value of the element at the given position
@@ -111,9 +155,24 @@ class MatrixSparseDOK(MatrixSparse):
                 raise ValueError("__setitem__() invalid arguments")
             pos = Position.convert_to_pos(Position, pos)
         if val == self._zero:
-            self._items.pop(pos, 1)
-        else:
-            self._items.update({pos: val})
+            return
+        sel_r = pos[0]
+        sel_c = pos[1]
+        initial_row = self._row_count[0]
+        distance_to_first_row = sel_r - initial_row
+        # If the row is not in the matrix, add it
+        if distance_to_first_row < 0:
+            self._row_count.insert(0, sel_r)
+            self._col_index.insert(0, sel_c)
+            self._values.insert(0, val)
+            return
+        # If the row is in the matrix, add the value
+        for row in range(distance_to_first_row, len(self._row_count)):
+            self._row_count[row] += 1
+        self._col_index.insert(distance_to_first_row, sel_c)
+        self._values.insert(distance_to_first_row, val)
+        return
+
 
     def __len__(self) -> int:
         """Get the number of elements in the matrix
@@ -121,7 +180,7 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             int: the number of elements in the matrix
         """
-        return len(self._items)
+        return len(self._values)
 
     def _add_number(self, other: Union[int, float]) -> Matrix:
         """Add a number to the matrix
@@ -133,24 +192,25 @@ class MatrixSparseDOK(MatrixSparse):
             ValueError: if the other number is not a number
 
         Returns:
-            MatrixSparseDOK: the matrix with the number added
+            MatrixSparseCSR: the matrix with the number added
         """
         if not isinstance(other, (int, float)):
             raise ValueError("_add_number: invalid arguments")
-        mat = MatrixSparseDOK(self._zero)
-        mat._items = {key: value + other for key, value in self._items.items()}
-        return mat
+        mat = MatrixSparseCSR(self._zero)
+        for pos in self:
+            mat[pos] = self[pos] + other
+        return mat        
 
-    def _add_matrix(self, other: MatrixSparseDOK) -> MatrixSparseDOK:
+    def _add_matrix(self, other: MatrixSparseCSR) -> MatrixSparseCSR:
         """Add a matrix to the matrix
 
         Args:
-            other (MatrixSparse): the matrix to add
+            other (MatrixSparseCSR): the matrix to add
 
         Returns:
-            MatrixSparseDOK: the matrix with the other matrix added
+            MatrixSparseCSR: the matrix with the other matrix added
         """
-        if not isinstance(other, MatrixSparseDOK):
+        if not isinstance(other, MatrixSparseCSR):
             raise ValueError("_add_matrix() invalid arguments")
         if self.zero != other.zero:
             raise ValueError("_add_matrix() incompatible matrices")
@@ -162,8 +222,12 @@ class MatrixSparseDOK(MatrixSparse):
         size2_y = dim2[1][1] - dim2[0][1] + 1
         if size1_x != size2_x or size1_y != size2_y:
             raise ValueError("_add_matrix() incompatible matrices")
-        mat = MatrixSparseDOK(self.zero)
-        mat._items = reduce(lambda d1, d2: {k: d1.get(k,0)+d2.get(k,0) for k in set(d1)|set(d2)}, [self._items, other._items])
+        mat = MatrixSparseCSR(self.zero)
+        # Works?
+        for pos in self:
+            mat[pos] = self[pos]
+        for pos in other:
+            mat[pos] += other[pos]
         return mat
 
     def _mul_number(self, other: Union[int, float]) -> Matrix:
@@ -176,12 +240,13 @@ class MatrixSparseDOK(MatrixSparse):
             ValueError: if the other number is not a number
 
         Returns:
-            MatrixSparseDOK: the matrix with the number multiplied
+            MatrixSparseCSR: the matrix with the number multiplied
         """
         if not isinstance(other, (int, float)):
             raise ValueError("_mul_number: invalid arguments")
-        mat = MatrixSparseDOK(self._zero)
-        mat._items = {key: value * other for key, value in self._items.items()}
+        mat = MatrixSparseCSR(self._zero)
+        for pos in self:
+            mat[pos] = self[pos] * other
         return mat
 
     def _mul_matrix(self, other: MatrixSparse) -> MatrixSparse:
@@ -191,9 +256,9 @@ class MatrixSparseDOK(MatrixSparse):
             other (MatrixSparse): the matrix to multiply by
 
         Returns:
-            MatrixSparseDOK: the matrix with the other matrix multiplied
+            MatrixSparseCSR: the matrix with the other matrix multiplied
         """
-        if not isinstance(other, MatrixSparseDOK):
+        if not isinstance(other, MatrixSparseCSR):
             raise ValueError("_mul_matrix() invalid arguments")
         if self.zero != other.zero:
             raise ValueError("_mul_matrix() incompatible matrices")
@@ -213,17 +278,18 @@ class MatrixSparseDOK(MatrixSparse):
         min_row_m2 = dim2[0][0]
         min_col_m2 = dim2[0][1]
 
-        mat = MatrixSparseDOK(self._zero)
-
-        dic = {}
-        #very cringe loops o meu cerebro esta a morrer apos ter que calcular isto mas funciona sempre creio eu
-        for i in range(size1_x):
-            for j in range(size2_y):
-                for k in range(size2_x):
-                    dic.update({(i+min_row_m1,j+min_col_m2): dic.get((i+min_row_m1,j+min_col_m2),0) 
-                    + self._items.get((i+min_row_m1,k+min_col_m1),0)*other._items.get((k+min_row_m2,j+min_col_m2),0)})
-
-        mat._items = dic
+        mat = MatrixSparseCSR(self._zero)
+        # Works?
+        for pos in self:
+            row = pos[0]
+            col = pos[1]
+            val = self[pos]
+            for pos2 in other:
+                row2 = pos2[0]
+                col2 = pos2[1]
+                val2 = other[pos2]
+                if col == col2:
+                    mat[(row + min_row_m1, col + min_col_m2)] += val * val2
         return mat
         
   
@@ -236,12 +302,9 @@ class MatrixSparseDOK(MatrixSparse):
         """
         if len(self) == 0:
             return tuple()
-        positions = list(self._items)
-        min_row = min(p[0] for p in positions)
-        min_col = min(p[1] for p in positions)
-        max_row = max(p[0] for p in positions)
-        max_col = max(p[1] for p in positions)
-        return ((min_row, min_col), (max_row, max_col))
+        return (Position(self._row_count[0], min(self._col_index)),
+                Position(self._row_count[0] + len(self._row_count[1:]), max(self._col_index)))
+        
 
     def row(self, row: int) -> Matrix:
         """Get the row of the matrix
@@ -253,12 +316,14 @@ class MatrixSparseDOK(MatrixSparse):
             ValueError: if the row is not valid
 
         Returns:
-            MatrixSparseDOK: the row of the matrix
+            MatrixSparseCSR: the row of the matrix
         """
         if not isinstance(row, int):
             raise ValueError("spmatrix_row: invalid arguments")
-        mat = MatrixSparseDOK(self._zero)
-        mat._items = {key: value for key, value in self._items.items() if key[0] == row}
+        mat = MatrixSparseCSR(self._zero)
+        for key in self:
+            if key[0] == row:
+                mat[key] = self[key]
         return mat
 
     def col(self, col: int) -> Matrix:
@@ -271,24 +336,28 @@ class MatrixSparseDOK(MatrixSparse):
             ValueError: if the column is not valid
 
         Returns:
-            MatrixSparseDOK: the column of the matrix
+            MatrixSparseCSR: the column of the matrix
         """
         if not isinstance(col, int):
             raise ValueError("spmatrix_col: invalid arguments")
-        mat = MatrixSparseDOK(self._zero)
-        mat._items = {key: value for key, value in self._items.items() if key[1] == col}
+        mat = MatrixSparseCSR(self._zero)
+        for key in self:
+            if key[1] == col:
+                mat[key] = self[key]
         return mat
 
     def diagonal(self) -> Matrix:
         """Get the diagonal of the matrix
 
         Returns:
-            MatrixSparseDOK: the diagonal of the matrix
+            MatrixSparseCSR: the diagonal of the matrix
         """
         if not (self.square()):
             raise ValueError("spmatrix_diagonal: matrix not square")
-        mat = MatrixSparseDOK(self._zero)
-        mat._items = {key: value for key, value in self._items.items() if key[0] == key[1]}
+        mat = MatrixSparseCSR(self._zero)
+        for key in self:
+            if key[0] == key[1]:
+                mat[key] = self[key]
         return mat
 
     def square(self) -> bool:
@@ -303,7 +372,7 @@ class MatrixSparseDOK(MatrixSparse):
         return lines == col
 
     @staticmethod
-    def eye(size: int, unitary: float = 1.0, zero: float = 0.0) -> MatrixSparseDOK:
+    def eye(size: int, unitary: float = 1.0, zero: float = 0.0) -> MatrixSparseCSR:
         """Create an identity matrix
 
         Args:
@@ -312,26 +381,26 @@ class MatrixSparseDOK(MatrixSparse):
             zero (float): the value of the zero elements
 
         Returns:
-            MatrixSparseDOK: the identity matrix
+            MatrixSparseCSR: the identity matrix
         """
         if not isinstance(size, int) or size < 0:
             raise ValueError("eye() invalid parameters")
         if not isinstance(unitary, (int, float)) or not isinstance(zero, (int, float)):
             raise ValueError("eye() invalid parameters")
-        mat = MatrixSparseDOK(zero)
+        mat = MatrixSparseCSR(zero)
         for i in range(size):
             mat[i, i] = unitary
         return mat
 
-    def transpose(self) -> MatrixSparseDOK:
+    def transpose(self) -> MatrixSparseCSR:
         """Transpose the matrix
 
         Returns:
-            MatrixSparseDOK: the transpose of the matrix
+            MatrixSparseCSR: the transpose of the matrix
         """
-        mat = MatrixSparseDOK(self._zero)
-        for key, value in self._items.items():
-            mat[key[1], key[0]] = value
+        mat = MatrixSparseCSR(self._zero)
+        for key in self:
+            mat[key[1], key[0]] = self[key]
         return mat
 
     def merge_two_lists(self, offset, list1, indexes1, list2, indexes2, zero) -> tuple[int, list, list]:
@@ -354,18 +423,12 @@ class MatrixSparseDOK(MatrixSparse):
         if 3 in list_sum:
             return self.merge_two_lists(offset + 1, list1, indexes1, list2, indexes2, zero)
         else:
-            merged_list = []
-            indexes = []
-            for i in range(len(list_sum)):
-                if list_sum[i] == 1:
-                    merged_list.append(list1[i])
-                    indexes.append(indexes1[i])
-                elif list_sum[i] == 2:
-                    merged_list.append(list2[i-offset])
-                    indexes.append(indexes2[i-offset])
-                elif list_sum[i] == 0:
-                    merged_list.append(zero)
-                    indexes.append(-1)
+            merged_list = [list1[i] if list_sum[i] == 1 else list2[i - offset] for i in range(len(list_sum))]
+            indexes = [indexes1[i] if list_sum[i] == 1 else indexes2[i - offset] for i in range(len(list_sum))]
+            for val in reversed(merged_list):
+                if val != 0:
+                    break
+                indexes[merged_list.index(val)] = -1
             return offset, merged_list, indexes
 
     def order_by_density(self, list_of_lists, indexes, zero) -> tuple[list, list]:
@@ -397,6 +460,8 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             compressed: the compressed matrix
         """
+        # TODO : Do method
+        pass
         if self.sparsity() < 0.5:
             raise ValueError("compress() dense matrix")
         zero = self._zero
@@ -482,14 +547,14 @@ class MatrixSparseDOK(MatrixSparse):
         return index_value_dic.get(pos, zero)
 
     @staticmethod
-    def decompress(compressed_vector: compressed) -> MatrixSparseDOK:
+    def decompress(compressed_vector: compressed) -> MatrixSparseCSR:
         """Decompress the matrix
 
         Args:
             compressed_vector (compressed): the compressed matrix
 
         Returns:
-            MatrixSparseDOK: the decompressed matrix
+            MatrixSparseCSR: the decompressed matrix
         """
         if not isinstance(compressed_vector, tuple):
             raise ValueError("decompress() invalid parameters")
@@ -517,7 +582,9 @@ class MatrixSparseDOK(MatrixSparse):
         offsets = compressed_vector[4]
         offsets = [upper_left_pos[1] - off for off in offsets]
         # Create a new matrix
-        matrix = MatrixSparseDOK(zero)
+        matrix = MatrixSparseCSR(zero)
+        # TODO : Do method
+        pass
         # Create a list merging the values with the indexes
         index_value = [((index, col), value) for col, (index, value) in enumerate(zip(value_indexes, value_rows))]
         # list of indexes sorted no repetitions 
