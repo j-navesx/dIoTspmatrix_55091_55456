@@ -354,12 +354,18 @@ class MatrixSparseDOK(MatrixSparse):
         if 3 in list_sum:
             return self.merge_two_lists(offset + 1, list1, indexes1, list2, indexes2, zero)
         else:
-            merged_list = [list1[i] if list_sum[i] == 1 else list2[i - offset] for i in range(len(list_sum))]
-            indexes = [indexes1[i] if list_sum[i] == 1 else indexes2[i - offset] for i in range(len(list_sum))]
-            for val in reversed(merged_list):
-                if val != 0:
-                    break
-                indexes[merged_list.index(val)] = -1
+            merged_list = []
+            indexes = []
+            for i in range(len(list_sum)):
+                if list_sum[i] == 1:
+                    merged_list.append(list1[i])
+                    indexes.append(indexes1[i])
+                elif list_sum[i] == 2:
+                    merged_list.append(list2[i-offset])
+                    indexes.append(indexes2[i-offset])
+                elif list_sum[i] == 0:
+                    merged_list.append(zero)
+                    indexes.append(-1)
             return offset, merged_list, indexes
 
     def order_by_density(self, list_of_lists, indexes, zero) -> tuple[list, list]:
