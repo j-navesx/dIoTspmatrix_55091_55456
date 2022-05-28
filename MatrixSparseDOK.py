@@ -1,6 +1,5 @@
 from __future__ import annotations
 from functools import reduce
-from numpy import trunc
 from MatrixSparse import *
 from Position import *
 from typing import Union
