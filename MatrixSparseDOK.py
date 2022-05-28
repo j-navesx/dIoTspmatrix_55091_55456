@@ -348,8 +348,13 @@ class MatrixSparseDOK(MatrixSparse):
         Returns:
             tuple[int, list, list]: the offset, the merged list and the merged indexes
         """
-        list_1 = [1 if x != zero else 0 for x in list1] + [0] * offset
-        list_2 = [0] * offset + [2 if x != zero else 0 for x in list2]
+        if offset >= 0:
+            list_1 = [1 if x != zero else 0 for x in list1] + [0] * offset
+            list_2 = [0] * offset + [2 if x != zero else 0 for x in list2]
+        else:
+            list_1 = [1 if x != zero else 0 for x in list1]
+            list_2 = [2 if list2[x-offset] != zero else 0 for x in range(len(list2) + offset)]
+            list_2 = list_2 + [0] * (-offset)
         list_sum = [x + y for x, y in zip(list_1, list_2)]
         if 3 in list_sum:
             return self.merge_two_lists(offset + 1, list1, indexes1, list2, indexes2, zero)
@@ -421,7 +426,11 @@ class MatrixSparseDOK(MatrixSparse):
             if rows_ordered.index(row) != 0:
                 # skip rows with all zeros
                 if not all(val == zero for val in row):
-                    offset, merged_rows, merged_indexes = self.merge_two_lists(0, merged_rows, merged_indexes,row, index, zero)
+                    # get the collum of the first non zero value in list2
+                    for val in row:
+                        if val != zero:
+                            firstcol = row.index(val)
+                    offset, merged_rows, merged_indexes = self.merge_two_lists(-firstcol, merged_rows, merged_indexes,row, index, zero)
                 else:
                     offset = 0
                 # if cant add in the list add in front
@@ -429,6 +438,12 @@ class MatrixSparseDOK(MatrixSparse):
                     merged_rows += row
                     merged_indexes += index
                 offsets.append(offset)
+        for i, val in enumerate(reversed(merged_rows)):
+                if val != zero:
+                    break
+                y = len(merged_rows) - i - 1
+                merged_rows.pop(y)
+                merged_indexes.pop(y)
         # order offsets by the index of the row
         offsets_ordered = [x for _, x in sorted(zip(indexes_ordered, offsets))]
         return (upper_left_pos, zero, tuple(merged_rows), tuple(merged_indexes), tuple(offsets_ordered)) 
