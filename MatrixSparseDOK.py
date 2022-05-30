@@ -409,7 +409,10 @@ class MatrixSparseDOK(MatrixSparse):
         upper_left_pos = dim[0]
         # get all the rows in the dim
         rows = [[self.row(row)._items.get((row,col),zero) for col in range(dim[0][1], dim[1][1]+1)] for row in range(dim[0][0], dim[1][0]+1)]
-        indexes = [[i]*len(rows[0]) for i in range(dim[0][0], dim[1][0]+1)]
+        #indexes = [[i]*len(rows[0]) for i in range(dim[0][0], dim[1][0]+1)]
+        indexes = []
+        for i,row_s in zip(range(dim[0][0], dim[1][0]+1), rows):
+            indexes.append([i]*len(row_s))
         # order the rows by density of zeros
         rows_ordered, indexes_ordered = self.order_by_density(rows, indexes, zero)
         # insert first row and index

@@ -67,9 +67,9 @@ class Position:
         Returns:
             bool: True if the position is equal, False otherwise
         """
-        if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
-            raise TypeError("__eq__() invalid arguments")
         if not isinstance(other, Position):
+            if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
+                raise TypeError("__eq__() invalid arguments")
             other = self.convert_to_pos(other)
         return self._pos == other._pos
 
@@ -82,9 +82,10 @@ class Position:
         Returns:
             bool: True if the position is less than, False otherwise
         """
-        if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
-            raise TypeError("__lt__() invalid arguments")
+        
         if not isinstance(other, Position):
+            if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
+                raise TypeError("__lt__() invalid arguments")
             other = self.convert_to_pos(other)
         return self._pos < other._pos
     
@@ -97,9 +98,10 @@ class Position:
         Returns:
             bool: True if the position is greater than, False otherwise
         """
-        if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
-            raise TypeError("__gt__() invalid arguments")
+        
         if not isinstance(other, Position):
+            if not isinstance(other, Position) and not isinstance(self.convert_to_pos(other), Position):
+                raise TypeError("__gt__() invalid arguments")
             other = self.convert_to_pos(other)
         return self._pos > other._pos
     
