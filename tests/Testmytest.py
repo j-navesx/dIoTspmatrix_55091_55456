@@ -58,4 +58,9 @@ class TestMatrixSparseCSR(unittest.TestCase):
         m[2,0] = 2.0
         compressed = m.compress()
         self.assertEqual(compressed, ((1,0), 0 ,(2.0, 1.2, 2.2), (2,1,2), (-1,0)))
-
+    def test_mytest6(self):
+        m = self.MatrixSparseImplementation()
+        m[1,2] = 1.2
+        self.assertEqual(m[1,2], 1.2)
+        m[1,2] = 1.1
+        self.assertEqual(m[1,2], 1.1)

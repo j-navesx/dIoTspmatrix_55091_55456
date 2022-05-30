@@ -169,8 +169,8 @@ class MatrixSparseCSR(MatrixSparse):
             pos = Position.convert_to_pos(Position, pos)
         if val == self._zero:
             return
-        if self.__getitem__(pos) != self._zero:
-            return
+        # if self.__getitem__(pos) != self._zero:
+        #     return
         sel_r = pos[0]
         sel_c = pos[1]
         if len(self._values) == 0:
@@ -203,6 +203,8 @@ class MatrixSparseCSR(MatrixSparse):
         elif sel_c > available_cols[-1]:
             self._col_index.insert(distance_to_first_row + num_of_vals_in_row, sel_c)
             self._values.insert(distance_to_first_row + num_of_vals_in_row, val)
+        elif sel_c in available_cols:
+            self._values[distance_to_first_row + available_cols.index(sel_c)] = val
         # If the row is in the matrix, add the value
         for row in range(distance_to_first_row + 1, len(self._row_count)):
             self._row_count[row] += 1
