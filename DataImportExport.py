@@ -1,9 +1,6 @@
 from __future__ import annotations
-from functools import reduce
-from numpy import trunc
 from MatrixSparse import *
 from Position import *
-from typing import Union
 
 class Import():
     """
@@ -16,7 +13,7 @@ class Import():
             filename(str): The filename to import from.
         """
         self.filename = filename
-    def import_matrix(self) -> MatrixSparse:
+    def import_matrix(self, m_type) -> MatrixSparse:
         """Import the matrix from a .mm file
         
         Returns:
@@ -31,7 +28,7 @@ class Import():
             col_n = int(line[1])
             number_elements = int(line[2])
             zero = int(line[3])
-            matrix = MatrixSparse(zero)
+            matrix = m_type(zero)
             for _ in range(number_elements):
                 line = f.readline()
                 line = line.split()

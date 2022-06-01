@@ -404,6 +404,8 @@ class MatrixSparseDOK(MatrixSparse):
         """
         if self.sparsity() < 0.5:
             raise ValueError("compress() dense matrix")
+        if len(self) == 0:
+            return ()
         zero = self._zero
         dim = self.dim()
         upper_left_pos = dim[0]
