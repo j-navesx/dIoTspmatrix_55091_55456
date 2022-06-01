@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "author": "João Fernandes",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": -55.02,
+      "left": -439.54,
+      "rotate": 90,
+      "attrs": {}
+    },
+    { "type": "wokwi-ili9341", "id": "lcd1", "top": -111.21, "left": -216.82, "attrs": {} },
+    { "type": "wokwi-pir-motion-sensor", "id": "pir1", "top": -215, "left": -464.2, "attrs": {"delayTime": 1,"inhibitTime": 0.2} }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "lcd1:VCC", "esp:3V3", "red", [ "v97.82", "h-241.68" ] ],
+    [ "lcd1:GND", "esp:GND.1", "black", [ "v85.91", "h-243.48" ] ],
+    [ "lcd1:D/C", "esp:D2", "green", [ "v118.35", "h-246.82" ] ],
+    [ "lcd1:LED", "esp:3V3", "red", [ "v140.11", "h-312.58" ] ],
+    [ "lcd1:CS", "esp:D15", "green", [ "v43.07", "h-245.53" ] ],
+    [ "lcd1:MOSI", "esp:D13", "green", [ "v26.02", "h-104.25", "v-249.51", "h-169.25" ] ],
+    [ "lcd1:SCK", "esp:D14", "green", [ "v65.11", "h-126.33", "v-283.19", "h-137.64" ] ],
+    [ "lcd1:MISO", "esp:D12", "green", [ "v71.34", "h-158.84", "v-281.53", "h-134.32" ] ],
+    [ "lcd1:RST", "esp:D21", "green", [ "v16.5", "h-204.72" ] ],
+    [ "pir1:OUT", "esp:D25", "green", [ "v40.69", "h81.83" ] ],
+    [ "pir1:VCC", "esp:3V3", "red", [ "v43.34", "h-92.26", "v194.55", "h70.24" ] ],
+    [ "pir1:GND", "esp:GND.2", "black", [ "v60.06", "h-10.27" ] ]
+  ]
+}

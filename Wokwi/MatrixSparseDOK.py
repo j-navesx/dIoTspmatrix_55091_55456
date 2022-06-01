@@ -1,9 +1,6 @@
-from __future__ import annotations
-from functools import reduce
+from reduce import reduce
 from MatrixSparse import *
 from Position import *
-from typing import Union
-
 
 class MatrixSparseDOK(MatrixSparse):
     def __init__(self, zero: float = 0):
@@ -216,7 +213,6 @@ class MatrixSparseDOK(MatrixSparse):
         mat = MatrixSparseDOK(self._zero)
 
         dic = {}
-        #very cringe loops o meu cerebro esta a morrer apos ter que calcular isto mas funciona sempre creio eu
         for i in range(size1_x):
             for j in range(size2_y):
                 for k in range(size2_x):
@@ -227,7 +223,7 @@ class MatrixSparseDOK(MatrixSparse):
         return mat
         
   
-  
+
     def dim(self) -> tuple[Position, ...]:
         """Get the dimensions of the matrix
 
@@ -302,7 +298,6 @@ class MatrixSparseDOK(MatrixSparse):
         col = dim[1][1] - dim[0][1] + 1
         return lines == col
 
-    @staticmethod
     def eye(size: int, unitary: float = 1.0, zero: float = 0.0) -> MatrixSparseDOK:
         """Create an identity matrix
 
@@ -453,7 +448,6 @@ class MatrixSparseDOK(MatrixSparse):
         offsets_ordered = [x for _, x in sorted(zip(indexes_ordered, offsets))]
         return (upper_left_pos, zero, tuple(merged_rows), tuple(merged_indexes), tuple(offsets_ordered)) 
 
-    @staticmethod
     def doi(compressed_vector: compressed, pos: Position) -> float:
         """Get the value of the element at the given position
 
@@ -501,7 +495,6 @@ class MatrixSparseDOK(MatrixSparse):
         index_value_dic = {(index, col+offsets_dic.get(index)): value for col, (index, value) in enumerate(zip(value_indexes, value_rows)) if index != -1}
         return index_value_dic.get(pos, zero)
 
-    @staticmethod
     def decompress(compressed_vector: compressed) -> MatrixSparseDOK:
         """Decompress the matrix
 
@@ -553,4 +546,3 @@ class MatrixSparseDOK(MatrixSparse):
                 if position[0] != -1:
                     matrix[index, (position[1]+offset)] = value
         return matrix
-
