@@ -71,8 +71,14 @@ class MatrixSparseCSR(MatrixSparse):
             MatrixSparseCSR: an iterator for the matrix
         """
         rows = [i for i in range(self._row_count[0],self._row_count[0] + len(self._row_count[1:]))]
-        cols = [i for i in range(min(self._col_index), max(self._col_index) + 1)]
-        rows_cols = list(zip(rows, cols))
+        #rows_cols = [[(row, col) for col in self.row(row)._col_index] for row in rows]
+        rows_cols = []
+        
+        for row in rows:
+            num_of_vals_in_row = self._row_count[(row - self._row_count[0]) + 1] - self._row_count[row-self._row_count[0]]
+            available_cols = self._col_index[row-self._row_count[0]:(row-self._row_count[0])+num_of_vals_in_row]
+            for col in available_cols:
+                rows_cols.append((row, col))
         self._iterator = iter(rows_cols)
         return self._iterator
 
@@ -119,20 +125,27 @@ class MatrixSparseCSR(MatrixSparse):
         Returns:
             float: the value of the element at the given position
         """
-        if not isinstance(
+        
+        if not isinstance(pos, Position):
+            if not isinstance(
             Position.convert_to_pos(Position, pos), Position
         ) and not isinstance(pos, Position):
-            raise ValueError("__getitem__() invalid arguments")
-        if not isinstance(pos, Position):
+                raise ValueError("__getitem__() invalid arguments")
             pos = Position.convert_to_pos(Position, pos)
+        
         sel_r = pos[0]
         sel_c = pos[1]
+        if self._row_count == []:
+            return self._zero
         if sel_r < self._row_count[0] or sel_r > self._row_count[0] + len(self._row_count[1:]):
-            return 0.0
-        available_cols = self._col_index[self._row_count[sel_r]:self._row_count[sel_r+1]]
+            return self._zero
+        if sel_r > len(self._row_count) - 1:
+            return self._zero
+        num_of_vals_in_row = self._row_count[(sel_r - self._row_count[0]) + 1] - self._row_count[sel_r-self._row_count[0]]
+        available_cols = self._col_index[sel_r-self._row_count[0]:(sel_r-self._row_count[0])+num_of_vals_in_row]
         if not (sel_c in available_cols):
-            return 0.0
-        return self._values[self._row_count[sel_r] + available_cols.index(sel_c)]
+            return self._zero
+        return self._values[sel_r-self._row_count[0] + available_cols.index(sel_c)]
 
     def __setitem__(self, pos: Union[Position, position], val: Union[int, float]):
         """Set the value of the element at the given position
@@ -156,21 +169,45 @@ class MatrixSparseCSR(MatrixSparse):
             pos = Position.convert_to_pos(Position, pos)
         if val == self._zero:
             return
+        # if self.__getitem__(pos) != self._zero:
+        #     return
         sel_r = pos[0]
         sel_c = pos[1]
+        if len(self._values) == 0:
+            self._values.append(val)
+            self._col_index.append(sel_c)
+            self._row_count.append(sel_r)
+            self._row_count.append(sel_r + 1)
+            return       
         initial_row = self._row_count[0]
         distance_to_first_row = sel_r - initial_row
         # If the row is not in the matrix, add it
+        # before the first row
         if distance_to_first_row < 0:
             self._row_count.insert(0, sel_r)
             self._col_index.insert(0, sel_c)
             self._values.insert(0, val)
             return
+        # after the last row
+        if distance_to_first_row >= len(self._row_count) - 1:
+            self._row_count.append(self._row_count[-1]+1)
+            self._col_index.append(sel_c)
+            self._values.append(val)
+            return
+        #determine the number of values in the row
+        num_of_vals_in_row = self._row_count[(sel_r - self._row_count[0]) + 1] - self._row_count[sel_r-self._row_count[0]]
+        available_cols = self._col_index[sel_r-self._row_count[0]:(sel_r-self._row_count[0])+num_of_vals_in_row]
+        if sel_c < available_cols[0]:
+            self._col_index.insert(distance_to_first_row, sel_c)
+            self._values.insert(distance_to_first_row, val)
+        elif sel_c > available_cols[-1]:
+            self._col_index.insert(distance_to_first_row + num_of_vals_in_row, sel_c)
+            self._values.insert(distance_to_first_row + num_of_vals_in_row, val)
+        elif sel_c in available_cols:
+            self._values[distance_to_first_row + available_cols.index(sel_c)] = val
         # If the row is in the matrix, add the value
-        for row in range(distance_to_first_row, len(self._row_count)):
+        for row in range(distance_to_first_row + 1, len(self._row_count)):
             self._row_count[row] += 1
-        self._col_index.insert(distance_to_first_row, sel_c)
-        self._values.insert(distance_to_first_row, val)
         return
 
 
@@ -303,10 +340,10 @@ class MatrixSparseCSR(MatrixSparse):
         if len(self) == 0:
             return tuple()
         return (Position(self._row_count[0], min(self._col_index)),
-                Position(self._row_count[0] + len(self._row_count[1:]), max(self._col_index)))
+                Position(self._row_count[0] + (len(self._row_count[1:])-1), max(self._col_index)))
         
 
-    def row(self, row: int) -> Matrix:
+    def row(self, row: int) -> MatrixSparseCSR:
         """Get the row of the matrix
 
         Args:
@@ -417,18 +454,29 @@ class MatrixSparseCSR(MatrixSparse):
         Returns:
             tuple[int, list, list]: the offset, the merged list and the merged indexes
         """
-        list_1 = [1 if x != zero else 0 for x in list1] + [0] * offset
-        list_2 = [0] * offset + [2 if x != zero else 0 for x in list2]
+        if offset >= 0:
+            list_1 = [1 if x != zero else 0 for x in list1] + [0] * offset
+            list_2 = [0] * offset + [2 if x != zero else 0 for x in list2]
+        else:
+            list_1 = [1 if x != zero else 0 for x in list1]
+            list_2 = [2 if list2[x-offset] != zero else 0 for x in range(len(list2) + offset)]
+            list_2 = list_2 + [0] * (-offset)
         list_sum = [x + y for x, y in zip(list_1, list_2)]
         if 3 in list_sum:
             return self.merge_two_lists(offset + 1, list1, indexes1, list2, indexes2, zero)
         else:
-            merged_list = [list1[i] if list_sum[i] == 1 else list2[i - offset] for i in range(len(list_sum))]
-            indexes = [indexes1[i] if list_sum[i] == 1 else indexes2[i - offset] for i in range(len(list_sum))]
-            for val in reversed(merged_list):
-                if val != 0:
-                    break
-                indexes[merged_list.index(val)] = -1
+            merged_list = []
+            indexes = []
+            for i in range(len(list_sum)):
+                if list_sum[i] == 1:
+                    merged_list.append(list1[i])
+                    indexes.append(indexes1[i])
+                elif list_sum[i] == 2:
+                    merged_list.append(list2[i-offset])
+                    indexes.append(indexes2[i-offset])
+                elif list_sum[i] == 0:
+                    merged_list.append(zero)
+                    indexes.append(-1)
             return offset, merged_list, indexes
 
     def order_by_density(self, list_of_lists, indexes, zero) -> tuple[list, list]:
@@ -460,7 +508,6 @@ class MatrixSparseCSR(MatrixSparse):
         Returns:
             compressed: the compressed matrix
         """
-        # TODO : Do method
         pass
         if self.sparsity() < 0.5:
             raise ValueError("compress() dense matrix")
@@ -468,8 +515,18 @@ class MatrixSparseCSR(MatrixSparse):
         dim = self.dim()
         upper_left_pos = dim[0]
         # get all the rows in the dim
-        rows = [[self.row(row)._items.get((row,col),zero) for col in range(dim[0][1], dim[1][1]+1)] for row in range(dim[0][0], dim[1][0]+1)]
-        indexes = [[i]*len(rows[0]) for i in range(dim[0][0], dim[1][0]+1)]
+        #rows = [self[row,col] for row, col in zip(range(dim[0][0], dim[1][0]+1), range(dim[0][1], dim[1][1]+1))]
+        rows = []
+        for row in range(dim[0][0], dim[1][0]+1):
+            cur_row = []
+            for col in range(dim[0][1], dim[1][1]+1):
+                cur_row.append(self[row, col])
+            rows.append(cur_row)
+        indexes = []
+        for i,row_s in zip(range(dim[0][0], dim[1][0]+1), rows):
+            indexes.append([i]*len(row_s))
+        #indexes = [[i]*len(row[0]) for i in range(dim[0][0], dim[1][0]+1)]
+        # order the rows by density of zeros
         # order the rows by density of zeros
         rows_ordered, indexes_ordered = self.order_by_density(rows, indexes, zero)
         # insert first row and index
@@ -486,7 +543,11 @@ class MatrixSparseCSR(MatrixSparse):
             if rows_ordered.index(row) != 0:
                 # skip rows with all zeros
                 if not all(val == zero for val in row):
-                    offset, merged_rows, merged_indexes = self.merge_two_lists(0, merged_rows, merged_indexes,row, index, zero)
+                    # get the collum of the first non zero value in list2
+                    for val in row:
+                        if val != zero:
+                            firstcol = row.index(val)
+                    offset, merged_rows, merged_indexes = self.merge_two_lists(-firstcol, merged_rows, merged_indexes,row, index, zero)
                 else:
                     offset = 0
                 # if cant add in the list add in front
@@ -494,9 +555,15 @@ class MatrixSparseCSR(MatrixSparse):
                     merged_rows += row
                     merged_indexes += index
                 offsets.append(offset)
+        for i, val in enumerate(reversed(merged_rows)):
+                if val != zero:
+                    break
+                y = len(merged_rows) - i - 1
+                merged_rows.pop(y)
+                merged_indexes.pop(y)
         # order offsets by the index of the row
         offsets_ordered = [x for _, x in sorted(zip(indexes_ordered, offsets))]
-        return (upper_left_pos, zero, tuple(merged_rows), tuple(merged_indexes), tuple(offsets_ordered)) 
+        return (upper_left_pos, zero, tuple(merged_rows), tuple(merged_indexes), tuple(offsets_ordered))
 
     @staticmethod
     def doi(compressed_vector: compressed, pos: Position) -> float:
@@ -554,7 +621,7 @@ class MatrixSparseCSR(MatrixSparse):
             compressed_vector (compressed): the compressed matrix
 
         Returns:
-            MatrixSparseCSR: the decompressed matrix
+            MatrixSparseDOK: the decompressed matrix
         """
         if not isinstance(compressed_vector, tuple):
             raise ValueError("decompress() invalid parameters")
@@ -583,8 +650,6 @@ class MatrixSparseCSR(MatrixSparse):
         offsets = [upper_left_pos[1] - off for off in offsets]
         # Create a new matrix
         matrix = MatrixSparseCSR(zero)
-        # TODO : Do method
-        pass
         # Create a list merging the values with the indexes
         index_value = [((index, col), value) for col, (index, value) in enumerate(zip(value_indexes, value_rows))]
         # list of indexes sorted no repetitions 
